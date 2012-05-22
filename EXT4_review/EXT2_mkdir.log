@@ -1,0 +1,47 @@
+/mnt # mkdir 1;sync
+1. [ext2_mkdir]root ino:2, new  ino:12, dir name:1
+2A:[ext2_get_blocks],maxblocks:1, ino:12, iblock:0
+2B:depth:1, blocks_to_boundary:11
+3A: bg_start:1, colour:5120, pid:42
+2D: indirect_blks:0
+goal=5121.
+i_block_alloc_info is NULL
+goal: 1, first:1, block_per_g: 8192
+ext2_new_blocks, 1320, 0
+block inode:0
+desc->bg_block_bitmap:6, buffer_head:6
+/* mkdir的函数调用的流程 */
+[<c00286c8>] (unwind_backtrace+0x0/0xec) from [<c00ab99c>] (submit_bh+0x28/0x1d4)
+[<c00ab99c>] (submit_bh+0x28/0x1d4) from [<c00acffc>] (bh_submit_read+0x68/0xa8)
+[<c00acffc>] (bh_submit_read+0x68/0xa8) from [<c00d02f0>] (read_block_bitmap+0x9c/0x1a4)
+[<c00d02f0>] (read_block_bitmap+0x9c/0x1a4) from [<c00d0dac>] (ext2_new_blocks+0x220/0x580)
+[<c00d0dac>] (ext2_new_blocks+0x220/0x580) from [<c00d4a7c>] (ext2_get_block+0x494/0x88c)
+[<c00d4a7c>] (ext2_get_block+0x494/0x88c) from [<c00ade6c>] (__block_prepare_write+0x1a8/0x464)
+[<c00ade6c>] (__block_prepare_write+0x1a8/0x464) from [<c00ae308>] (block_write_begin_newtrunc+0x88/0xd8)
+[<c00ae308>] (block_write_begin_newtrunc+0x88/0xd8) from [<c00d4558>] (__ext2_write_begin+0x30/0x3c)
+[<c00d4558>] (__ext2_write_begin+0x30/0x3c) from [<c00d19d0>] (ext2_make_empty+0x6c/0x1e4)
+[<c00d19d0>] (ext2_make_empty+0x6c/0x1e4) from [<c00d5824>] (ext2_mkdir+0xd4/0x188)
+[<c00d5824>] (ext2_mkdir+0xd4/0x188) from [<c0095448>] (vfs_mkdir+0x68/0x9c)
+[<c0095448>] (vfs_mkdir+0x68/0x9c) from [<c009749c>] (sys_mkdirat+0x84/0xd0)
+[<c009749c>] (sys_mkdirat+0x84/0xd0) from [<c0022e60>] (ret_fast_syscall+0x0/0x2c)
+ext2_try_to_allocate_with_rsv, 1125
+return 38
+do sync
+
+/*
+ * 注：sync函数会将脏数据刷新到Block dev上.
+ * buffer_head相关的page cache存在Block dev的inode上
+ */
+
+[<c00286c8>] (unwind_backtrace+0x0/0xec) from [<c00ab99c>] (submit_bh+0x28/0x1d4)
+[<c00ab99c>] (submit_bh+0x28/0x1d4) from [<c00aee7c>] (__block_write_full_page+0x338/0x4ec)
+[<c00aee7c>] (__block_write_full_page+0x338/0x4ec) from [<c00af0fc>] (block_write_full_page_endio+0xcc/0xd4)
+[<c00af0fc>] (block_write_full_page_endio+0xcc/0xd4) from [<c006e708>] (__writepage+0x14/0x64)
+[<c006e708>] (__writepage+0x14/0x64) from [<c006eff0>] (write_cache_pages+0x21c/0x2f8)
+[<c006eff0>] (write_cache_pages+0x21c/0x2f8) from [<c006f120>] (do_writepages+0x2c/0x38)
+[<c006f120>] (do_writepages+0x2c/0x38) from [<c0069a18>] (__filemap_fdatawrite_range+0x64/0x6c)
+[<c0069a18>] (__filemap_fdatawrite_range+0x64/0x6c) from [<c006a8c0>] (filemap_flush+0x28/0x30)
+[<c006a8c0>] (filemap_flush+0x28/0x30) from [<c008ebe0>] (iterate_supers+0x50/0x8c)
+[<c008ebe0>] (iterate_supers+0x50/0x8c) from [<c00aa308>] (sync_filesystems+0x14/0x1c)
+[<c00aa308>] (sync_filesystems+0x14/0x1c) from [<c00aa410>] (sys_sync+0x14/0x40)
+[<c00aa410>] (sys_sync+0x14/0x40) from [<c0022e60>] (ret_fast_syscall+0x0/0x2c)
