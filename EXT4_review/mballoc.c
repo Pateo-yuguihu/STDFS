@@ -204,3 +204,325 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
 	printk(KERN_INFO "EXT4-fs: mballoc enabled\n");
 	return 0;
 }
+
+/*
+ * Main entry point into mballoc to allocate blocks
+ * it tries to use preallocation first, then falls back
+ * to usual allocation
+ */
+ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+				 struct ext4_allocation_request *ar, int *errp)
+{
+	int freed;
+	struct ext4_allocation_context *ac = NULL;
+	struct ext4_sb_info *sbi;
+	struct super_block *sb;
+	ext4_fsblk_t block = 0;
+	unsigned int inquota;
+	unsigned int reserv_blks = 0;
+
+	sb = ar->inode->i_sb;
+	sbi = EXT4_SB(sb);
+
+	printk( "dev %s flags %u len %u ino %lu "
+		   "lblk %llu goal %llu lleft %llu lright %llu "
+		   "pleft %llu pright %llu ",
+		   sb->s_id, ar->flags, ar->len,
+		   ar->inode ? ar->inode->i_ino : 0,
+		   (unsigned long long) ar->logical,
+		   (unsigned long long) ar->goal,  /* 预测的目标block */
+		   (unsigned long long) ar->lleft,
+		   (unsigned long long) ar->lright,
+		   (unsigned long long) ar->pleft,
+		   (unsigned long long) ar->pright);
+
+	/* 当mount -o nodelalloc 时，i_delalloc_reserved_flag为false */
+	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
+		/*
+		 * With delalloc we already reserved the blocks
+		 */
+		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
+			/* let others to free the space */
+			yield();
+			ar->len = ar->len >> 1;
+		}
+		if (!ar->len) {
+			*errp = -ENOSPC;
+			return 0;
+		}
+		reserv_blks = ar->len;
+	}
+	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
+		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
+		ar->len--;
+	}
+	if (ar->len == 0) {
+		*errp = -EDQUOT;
+		goto out3;
+	}
+	inquota = ar->len;
+
+	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
+		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
+
+	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
+	if (!ac) {
+		ar->len = 0;
+		*errp = -ENOMEM;
+		goto out1;
+	}
+	/* 初始化ac的orgin & goal ext4_free_extent */
+	*errp = ext4_mb_initialize_context(ac, ar);
+	if (*errp) {
+		ar->len = 0;
+		goto out2;
+	}
+
+	ac->ac_op = EXT4_MB_HISTORY_PREALLOC;
+	if (!ext4_mb_use_preallocated(ac)) {
+		ac->ac_op = EXT4_MB_HISTORY_ALLOC;
+		ext4_mb_normalize_request(ac, ar);
+repeat:
+		/* allocate space in core */
+		ext4_mb_regular_allocator(ac); /* 实际的去分配空间 */
+
+		/* as we've just preallocated more space than
+		 * user requested orinally, we store allocated
+		 * space in a special descriptor */
+		if (ac->ac_status == AC_STATUS_FOUND &&
+				ac->ac_o_ex.fe_len < ac->ac_b_ex.fe_len)
+			ext4_mb_new_preallocation(ac);
+	}
+	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_blks);
+		if (*errp ==  -EAGAIN) {
+			/*
+			 * drop the reference that we took
+			 * in ext4_mb_use_best_found
+			 */
+			ext4_mb_release_context(ac);
+			ac->ac_b_ex.fe_group = 0;
+			ac->ac_b_ex.fe_start = 0;
+			ac->ac_b_ex.fe_len = 0;
+			ac->ac_status = AC_STATUS_CONTINUE;
+			goto repeat;
+		} else if (*errp) {
+			ac->ac_b_ex.fe_len = 0;
+			ar->len = 0;
+			ext4_mb_show_ac(ac);
+		} else {
+			block = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
+			ar->len = ac->ac_b_ex.fe_len;
+		}
+	} else {
+		freed  = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
+		if (freed)
+			goto repeat;
+		*errp = -ENOSPC;
+		ac->ac_b_ex.fe_len = 0;
+		ar->len = 0;
+		ext4_mb_show_ac(ac);
+	}
+
+	ext4_mb_release_context(ac);
+
+out2:
+	kmem_cache_free(ext4_ac_cachep, ac);
+out1:
+	if (ar->len < inquota)
+		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
+out3:
+	if (!ar->len) {
+		if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag)
+			/* release all the reserved blocks if non delalloc */
+			percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+						reserv_blks);
+	}
+
+	trace_mark(ext4_allocate_blocks,
+		   "dev %s block %llu flags %u len %u ino %lu "
+		   "logical %llu goal %llu lleft %llu lright %llu "
+		   "pleft %llu pright %llu ",
+		   sb->s_id, (unsigned long long) block,
+		   ar->flags, ar->len, ar->inode ? ar->inode->i_ino : 0,
+		   (unsigned long long) ar->logical,
+		   (unsigned long long) ar->goal,
+		   (unsigned long long) ar->lleft,
+		   (unsigned long long) ar->lright,
+		   (unsigned long long) ar->pleft,
+		   (unsigned long long) ar->pright);
+
+	return block;
+}
+
+static noinline_for_stack int
+ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+{
+	ext4_group_t group;
+	ext4_group_t i;
+	int cr;
+	int err = 0;
+	int bsbits;
+	struct ext4_sb_info *sbi;
+	struct super_block *sb;
+	struct ext4_buddy e4b;
+	loff_t size, isize;
+
+	sb = ac->ac_sb;
+	sbi = EXT4_SB(sb);
+	BUG_ON(ac->ac_status == AC_STATUS_FOUND);
+
+	/* first, try the goal */
+	err = ext4_mb_find_by_goal(ac, &e4b); 
+	if (err || ac->ac_status == AC_STATUS_FOUND) {
+		printk("ext4_mb_find_by_goal\n");
+		goto out;
+	}	
+
+	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
+		goto out;
+
+	/*
+	 * ac->ac2_order is set only if the fe_len is a power of 2
+	 * if ac2_order is set we also set criteria to 0 so that we
+	 * try exact allocation using buddy.
+	 */
+	i = fls(ac->ac_g_ex.fe_len);
+	ac->ac_2order = 0;
+	/*
+	 * We search using buddy data only if the order of the request
+	 * is greater than equal to the sbi_s_mb_order2_reqs
+	 * You can tune it via /proc/fs/ext4/<partition>/order2_req
+	 */
+	if (i >= sbi->s_mb_order2_reqs) {
+		/*
+		 * This should tell if fe_len is exactly power of 2
+		 */
+		if ((ac->ac_g_ex.fe_len & (~(1 << (i - 1)))) == 0)
+			ac->ac_2order = i - 1;
+	}
+
+	bsbits = ac->ac_sb->s_blocksize_bits;
+	/* if stream allocation is enabled, use global goal */
+	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
+	isize = i_size_read(ac->ac_inode) >> bsbits;
+	if (size < isize)
+		size = isize;
+
+	if (size < sbi->s_mb_stream_request &&
+			(ac->ac_flags & EXT4_MB_HINT_DATA)) {
+		/* TBD: may be hot point */
+		spin_lock(&sbi->s_md_lock);
+		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
+		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
+		spin_unlock(&sbi->s_md_lock);
+	}
+	/* Let's just scan groups to find more-less suitable blocks */
+	cr = ac->ac_2order ? 0 : 1;
+	/*
+	 * cr == 0 try to get exact allocation,
+	 * cr == 3  try to get anything
+	 */
+repeat:
+	for (; cr < 4 && ac->ac_status == AC_STATUS_CONTINUE; cr++) {
+		ac->ac_criteria = cr;
+		/*
+		 * searching for the right group start
+		 * from the goal value specified
+		 */
+		group = ac->ac_g_ex.fe_group;
+
+		for (i = 0; i < EXT4_SB(sb)->s_groups_count; group++, i++) {
+			struct ext4_group_info *grp;
+			struct ext4_group_desc *desc;
+
+			if (group == EXT4_SB(sb)->s_groups_count)
+				group = 0;
+
+			/* quick check to skip empty groups */
+			grp = ext4_get_group_info(sb, group);
+			if (grp->bb_free == 0)
+				continue;
+
+			/*
+			 * if the group is already init we check whether it is
+			 * a good group and if not we don't load the buddy
+			 */
+			if (EXT4_MB_GRP_NEED_INIT(grp)) {
+				/*
+				 * we need full data about the group
+				 * to make a good selection
+				 */
+				err = ext4_mb_init_group(sb, group); 
+				/* 初始化块组的buddy cache(block bitmap & buddy bitmap)*/
+				if (err)
+					goto out;
+			}
+
+			/*
+			 * If the particular group doesn't satisfy our
+			 * criteria we continue with the next group
+			 */
+			if (!ext4_mb_good_group(ac, group, cr))
+				continue;
+			/* 将buddy cache 赋值为struct ext4_buddy e4b */
+			err = ext4_mb_load_buddy(sb, group, &e4b);
+			if (err)
+				goto out;
+
+			ext4_lock_group(sb, group);
+			if (!ext4_mb_good_group(ac, group, cr)) {
+				/* someone did allocation from this group */
+				ext4_unlock_group(sb, group);
+				ext4_mb_release_desc(&e4b);
+				continue;
+			}
+
+			ac->ac_groups_scanned++;
+			desc = ext4_get_group_desc(sb, group, NULL);
+			if (cr == 0 || (desc->bg_flags &
+					cpu_to_le16(EXT4_BG_BLOCK_UNINIT) &&
+					ac->ac_2order != 0))
+				ext4_mb_simple_scan_group(ac, &e4b);
+			else if (cr == 1 &&
+					ac->ac_g_ex.fe_len == sbi->s_stripe)
+				ext4_mb_scan_aligned(ac, &e4b);
+			else
+				ext4_mb_complex_scan_group(ac, &e4b);
+
+			ext4_unlock_group(sb, group);
+			ext4_mb_release_desc(&e4b);
+
+			if (ac->ac_status != AC_STATUS_CONTINUE)
+				break;
+		}
+	}
+
+	if (ac->ac_b_ex.fe_len > 0 && ac->ac_status != AC_STATUS_FOUND &&
+	    !(ac->ac_flags & EXT4_MB_HINT_FIRST)) {
+		/*
+		 * We've been searching too long. Let's try to allocate
+		 * the best chunk we've found so far
+		 */
+
+		ext4_mb_try_best_found(ac, &e4b);
+		if (ac->ac_status != AC_STATUS_FOUND) {
+			/*
+			 * Someone more lucky has already allocated it.
+			 * The only thing we can do is just take first
+			 * found block(s)
+			printk(KERN_DEBUG "EXT4-fs: someone won our chunk\n");
+			 */
+			ac->ac_b_ex.fe_group = 0;
+			ac->ac_b_ex.fe_start = 0;
+			ac->ac_b_ex.fe_len = 0;
+			ac->ac_status = AC_STATUS_CONTINUE;
+			ac->ac_flags |= EXT4_MB_HINT_FIRST;
+			cr = 3;
+			atomic_inc(&sbi->s_mb_lost_chunks);
+			goto repeat;
+		}
+	}
+out:
+	return err;
+}
