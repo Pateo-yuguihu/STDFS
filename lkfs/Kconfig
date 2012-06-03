@@ -1,0 +1,4 @@
+config LKFS_FS
+	tristate "Lake fs support"
+	help
+	  Lake is a standard Linux file system for hard disks.
