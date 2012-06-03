@@ -63,6 +63,19 @@ struct lkfs_inode {
 	__le32	i_block[LKFS_N_BLOCKS];/* Pointers to blocks */
 };
 
+
+#define LKFS_GOOD_OLD_INODE_SIZE 128
+#define LKFS_SUPER_MAGIC	0x8309
+/*
+ * Special inode numbers
+ */
+#define	LKFS_BAD_INO		 1	/* Bad blocks inode */
+#define LKFS_ROOT_INO		 2	/* Root inode */
+#define LKFS_BOOT_LOADER_INO	 5	/* Boot loader inode */
+#define LKFS_UNDEL_DIR_INO	 6	/* Undelete directory inode */
+#define LKFS_GOOD_OLD_FIRST_INO	11
+
+
 /*
  * Structure of the super block
  */
@@ -74,9 +87,6 @@ struct lkfs_super_block {
 	__le32	s_free_inodes_count;	/* Free inodes count */
 	__le32	s_first_data_block;	/* First Data Block */
 	__le32	s_log_block_size;	/* Block size */
-	__le32	s_blocks_per_group;	/* # Blocks per group */
-	__le32	s_frags_per_group;	/* # Fragments per group */
-	__le32	s_inodes_per_group;	/* # Inodes per group */
 	__le32	s_mtime;		/* Mount time */
 	__le32	s_wtime;		/* Write time */
 	__le16	s_mnt_count;		/* Mount count */
@@ -87,6 +97,29 @@ struct lkfs_super_block {
 	__le16   s_inode_size; 		/* size of inode structure */
 	__u8	s_uuid[16];		/* 128-bit uuid for volume */
 	char	s_volume_name[16]; 	/* volume name */
+	char blockbitmap[128];	/* block bitmap: 8 * 128 = 1024 */
+	char inodebitmap[32];  /* inode bitmap : 8 * 32 = 256 */
+};
+
+/*
+ * lkfs-fs super-block data in memory
+ */
+struct lkfs_sb_info {
+	unsigned long s_frag_size;	/* Size of a fragment in bytes */
+	unsigned long s_frags_per_block;/* Number of fragments per block */
+	unsigned long s_inodes_per_block;/* Number of inodes per block */
+	unsigned long s_frags_per_group;/* Number of fragments in a group */
+	unsigned long s_blocks_per_group;/* Number of blocks in a group */
+	unsigned long s_inodes_per_group;/* Number of inodes in a group */
+	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
+	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+	struct lkfs_super_block * s_es;	/* Pointer to the super block in the buffer */
+	unsigned long s_sb_block;
+	uid_t s_resuid;
+	gid_t s_resgid;
+	int s_inode_size;
+	int s_first_ino;
+	unsigned long s_dir_count;
 };
 
 #define LKFS_DEBUG
@@ -107,4 +140,24 @@ static inline struct lkfs_inode_info *LKFS_I(struct inode *inode)
 {
 	return container_of(inode, struct lkfs_inode_info, vfs_inode);
 }
+
+static inline struct lkfs_sb_info *LKFS_SB(struct super_block *sb)
+{
+	return sb->s_fs_info;
+}
+
+
+/* inode.c */
+extern struct inode *lkfs_iget (struct super_block *, unsigned long);
+/*extern int ext2_write_inode (struct inode *, struct writeback_control *);
+extern void ext2_evict_inode(struct inode *);
+extern int ext2_sync_inode (struct inode *);
+extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
+extern int ext2_setattr (struct dentry *, struct iattr *);
+extern void ext2_set_inode_flags(struct inode *inode);
+extern void ext2_get_inode_flags(struct ext2_inode_info *);
+extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+		       u64 start, u64 len);
+*/
+
 #endif

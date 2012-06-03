@@ -60,19 +60,130 @@ static void lkfs_destroy_inode(struct inode *inode)
 	kmem_cache_free(lkfs_inode_cachep, LKFS_I(inode));
 }
 
+static int lkfs_statfs (struct dentry * dentry, struct kstatfs * buf)
+{
+	struct super_block *sb = dentry->d_sb;
+	struct lkfs_sb_info *sbi = LKFS_SB(sb);
+	struct lkfs_super_block *es = sbi->s_es;
+	u64 fsid;
+
+	/* spin_lock(&sbi->s_lock); */
+
+	buf->f_type = LKFS_SUPER_MAGIC;
+	buf->f_bsize = sb->s_blocksize;
+	buf->f_blocks = le32_to_cpu(es->s_blocks_count);
+	buf->f_bfree = le32_to_cpu(es->s_free_blocks_count);
+	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
+	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
+		buf->f_bavail = 0;
+	buf->f_files = le32_to_cpu(es->s_inodes_count);
+	buf->f_ffree = le32_to_cpu(es->s_free_inodes_count );
+	buf->f_namelen = LKFS_NAME_LEN;
+	fsid = le64_to_cpup((void *)es->s_uuid) ^
+	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
+	buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
+	buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
+	/* spin_unlock(&sbi->s_lock); */
+	return 0;
+}
+
 static const struct super_operations lkfs_sops = {
 	.alloc_inode	= lkfs_alloc_inode,
 	.destroy_inode	= lkfs_destroy_inode,
 	/*.write_inode	= lkfs_write_inode,
 	.put_super	= lkfs_put_super,
 	.write_super	= lkfs_write_super,
-	.sync_fs	= lkfs_sync_fs,
+	.sync_fs	= lkfs_sync_fs,*/
 	.statfs		= lkfs_statfs,
-	.remount_fs	= lkfs_remount,*/
+	/*.remount_fs	= lkfs_remount,*/
 };
 
 static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 {
+	struct buffer_head * bh;
+	struct lkfs_sb_info * sbi;
+	struct lkfs_super_block * es;
+	struct inode *root;
+	unsigned long block;
+	unsigned long offset = 0;
+	long ret = -EINVAL;
+	int blocksize = BLOCK_SIZE;
+	int err;
+
+	sbi = kzalloc(sizeof(struct lkfs_sb_info), GFP_KERNEL);
+	if (!sbi)
+		return -ENOMEM;
+
+	sb->s_fs_info = sbi;
+	sbi->s_sb_block = 1; /* boot block */
+
+	/* spin_lock_init(&sbi->s_lock); */
+
+	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
+	if (!blocksize) {
+		lkfs_debug("error: unable to set blocksize\n");
+		goto failed_sbi;
+	}
+
+	if (!(bh = sb_bread(sb, 1))) {
+		lkfs_debug("error: unable to read superblock\n");
+		goto failed_sbi;
+	}
+
+	es = (struct lkfs_super_block *) (((char *)bh->b_data) + offset);
+	sbi->s_es = es;
+	sb->s_magic = le16_to_cpu(es->s_magic);
+
+	if (sb->s_magic != LKFS_SUPER_MAGIC)
+		goto cantfind_lkfs;
+
+	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+	sbi->s_inode_size = LKFS_GOOD_OLD_INODE_SIZE;
+	sbi->s_first_ino = LKFS_GOOD_OLD_FIRST_INO;
+	
+
+	if (sb->s_blocksize != bh->b_size) {
+			lkfs_debug(sb, KERN_ERR, "error: unsupported blocksize\n");
+		goto failed_mount;
+	}
+
+	//get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+
+	/*
+	 * set up enough so that it can read an inode
+	 */
+	sb->s_op = &lkfs_sops;
+
+	root = lkfs_iget(sb, LKFS_ROOT_INO);
+	if (IS_ERR(root)) {
+		ret = PTR_ERR(root);
+		goto failed_mount;
+	}
+	if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
+		iput(root);
+		lkfs_debug("error: corrupt root inode, run lkfsck\n");
+		goto failed_mount;
+	}
+
+	sb->s_root = d_alloc_root(root);
+	if (!sb->s_root) {
+		iput(root);
+		lkfs_debug("error: get root inode failed\n");
+		ret = -ENOMEM;
+		goto failed_mount;
+	}
+	return 0;
+
+cantfind_lkfs:
+	lkfs_debug("error: can't find an lkfs filesystem on dev %s.\n", sb->s_id);
+	goto failed_mount;
+	
+failed_mount:
+	brelse(bh);
+failed_sbi:
+	sb->s_fs_info = NULL;
+	kfree(sbi);
+	return ret;
 }
 
 static int lkfs_get_sb(struct file_system_type *fs_type,
@@ -97,6 +208,7 @@ static int __init init_lkfs_fs(void)
 		goto out;
         err = register_filesystem(&lkfs_fs_type);
 	lkfs_debug("lkfs initialize...\n");
+	lkfs_debug("super block size: %d\n", sizeof(struct lkfs_super_block));
 	if (err)
 		goto out;
 	return 0;
