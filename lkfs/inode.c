@@ -90,7 +90,7 @@ lkfs_write_begin(struct file *file, struct address_space *mapping,
 {
 	int ret;
 
-	ret = block_write_begin(mapping, pos, len, flags, pagep,
+	ret = block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
 				lkfs_get_block);
 	return ret;
 }
@@ -110,6 +110,20 @@ static sector_t lkfs_bmap(struct address_space *mapping, sector_t block)
 	return generic_block_bmap(mapping, block, lkfs_get_block);
 }
 
+int lkfs_setattr(struct dentry *dentry, struct iattr *iattr)
+{
+	struct inode *inode = dentry->d_inode;
+	int error;
+
+	error = inode_change_ok(inode, iattr);
+	if (error)
+		return error;
+
+	generic_setattr(inode, iattr);
+	mark_inode_dirty(inode);
+	error = lkfs_sync_inode(inode);
+	return error;
+}
 
 const struct address_space_operations lkfs_aops = {
 	.readpage		= lkfs_readpage,

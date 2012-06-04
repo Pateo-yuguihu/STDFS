@@ -23,7 +23,6 @@ static struct buffer_head * stfs_find_entry (struct inode *dir,
 					const struct qstr *d_name,
 					struct lkfs_dir_entry_2 ** res_dir)
 {
-	//struct ext4_map_blocks map;
 	struct buffer_head *bh = NULL;
 	struct lkfs_dir_entry_2 * dentry;
 

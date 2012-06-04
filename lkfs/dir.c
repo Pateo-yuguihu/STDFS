@@ -66,11 +66,6 @@ static inline unsigned long dir_pages(struct inode *inode)
 	return (inode->i_size+PAGE_CACHE_SIZE-1)>>PAGE_CACHE_SHIFT;
 }
 
-static int lkfs_prepare_chunk(struct page *page, loff_t pos, unsigned len)
-{
-	return __block_write_begin(page, pos, len, lkfs_get_block);
-}
-
 static int lkfs_commit_chunk(struct page *page, loff_t pos, unsigned len)
 {
 	struct address_space *mapping = page->mapping;
@@ -84,15 +79,21 @@ static int lkfs_commit_chunk(struct page *page, loff_t pos, unsigned len)
 		i_size_write(dir, pos+len);
 		mark_inode_dirty(dir);
 	}
-	//if (IS_DIRSYNC(dir)) {
-		err = write_one_page(page, 1);
-		if (!err)
-			err = lkfs_sync_inode(dir);
-	//} else {
-	//	unlock_page(page);
-	//}
+
+	err = write_one_page(page, 1);
+	if (!err)
+		err = lkfs_sync_inode(dir);
+
 
 	return err;
+}
+
+int __lkfs_write_begin(struct file *file, struct address_space *mapping,
+		loff_t pos, unsigned len, unsigned flags,
+		struct page **pagep, void **fsdata)
+{
+	return block_write_begin_newtrunc(file, mapping, pos, len, flags,
+					pagep, fsdata, lkfs_get_block);
 }
 
 int lkfs_add_link (struct dentry *dentry, struct inode *inode)
@@ -129,9 +130,10 @@ int lkfs_add_link (struct dentry *dentry, struct inode *inode)
 		de = (struct lkfs_dir_entry_2 *)kaddr;
 		kaddr += PAGE_CACHE_SIZE - reclen;
 		while ((char *)de <= kaddr) {
-			lkfs_debug("name:%s, name_len:%d, inode:%d\n",
-				de->name, de->name_len, de->inode);
+			/* lkfs_debug("name:%s, name_len:%d, inode:%d\n",
+				de->name, de->name_len, de->inode);*/
 			if ((char *)de == dir_end) {
+				lkfs_debug("######need change inode isize#########\n");
 				/* We hit i_size */
 				name_len = 0;
 				rec_len = chunk_size;
@@ -167,7 +169,8 @@ int lkfs_add_link (struct dentry *dentry, struct inode *inode)
 got_it:
 	pos = page_offset(page) +
 		(char*)de - (char*)page_address(page);
-	err = lkfs_prepare_chunk(page, pos, rec_len);
+	err = __lkfs_write_begin(NULL, page->mapping, pos, rec_len, 0,
+							&page, NULL);
 	if (err)
 		goto out_unlock;
 	if (de->inode) {
@@ -248,6 +251,5 @@ const struct file_operations lkfs_dir_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
 	.readdir	= lkfs_readdir,
-	/* .fsync		= lkfs_fsync, */
+	.fsync		= lkfs_fsync,
 };
-

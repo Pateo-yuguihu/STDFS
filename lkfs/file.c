@@ -38,7 +38,7 @@ const struct file_operations lkfs_file_operations = {
 };
 
 const struct inode_operations lkfs_file_inode_operations = {
-	//.setattr	= lkfs_setattr,
+	.setattr	= lkfs_setattr,
 	//.fiemap		= lkfs_fiemap,
 };
 
