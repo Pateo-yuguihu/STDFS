@@ -14,7 +14,6 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 {
 	struct super_block *sb;
 	struct buffer_head *bitmap_bh = NULL;
-	struct buffer_head *bh2;
 	int group, i;
 	ino_t ino = 0;
 	struct inode * inode;

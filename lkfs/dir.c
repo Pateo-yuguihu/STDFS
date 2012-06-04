@@ -27,11 +27,7 @@ static struct page * lkfs_get_page(struct inode *dir, unsigned long n,
 	struct address_space *mapping = dir->i_mapping;
 	struct page *page = read_mapping_page(mapping, n, NULL);
 	if (!IS_ERR(page)) {
-		kmap(page);
-		/*if (!PageChecked(page))
-			ext2_check_page(page, quiet);
-		if (PageError(page))
-			goto fail;*/
+
 	}
 	return page;
 
@@ -70,6 +66,34 @@ static inline unsigned long dir_pages(struct inode *inode)
 	return (inode->i_size+PAGE_CACHE_SIZE-1)>>PAGE_CACHE_SHIFT;
 }
 
+static int lkfs_prepare_chunk(struct page *page, loff_t pos, unsigned len)
+{
+	return __block_write_begin(page, pos, len, lkfs_get_block);
+}
+
+static int lkfs_commit_chunk(struct page *page, loff_t pos, unsigned len)
+{
+	struct address_space *mapping = page->mapping;
+	struct inode *dir = mapping->host;
+	int err = 0;
+
+	dir->i_version++;
+	block_write_end(NULL, mapping, pos, len, len, page, NULL);
+
+	if (pos+len > dir->i_size) {
+		i_size_write(dir, pos+len);
+		mark_inode_dirty(dir);
+	}
+	//if (IS_DIRSYNC(dir)) {
+		err = write_one_page(page, 1);
+		if (!err)
+			err = lkfs_sync_inode(dir);
+	//} else {
+	//	unlock_page(page);
+	//}
+
+	return err;
+}
 
 int lkfs_add_link (struct dentry *dentry, struct inode *inode)
 {
@@ -77,7 +101,7 @@ int lkfs_add_link (struct dentry *dentry, struct inode *inode)
 	const char *name = dentry->d_name.name;
 	int namelen = dentry->d_name.len;
 	unsigned chunk_size = 1024;
-	unsigned reclen = 12;
+	unsigned reclen = LKFS_DIR_REC_LEN(namelen);
 	unsigned short rec_len, name_len;
 	struct page *page = NULL;
 	struct lkfs_dir_entry_2 * de;
@@ -141,26 +165,24 @@ int lkfs_add_link (struct dentry *dentry, struct inode *inode)
 	BUG();
 	return -EINVAL;
 got_it:
-	#if 1
 	pos = page_offset(page) +
 		(char*)de - (char*)page_address(page);
-	err = __lkfs_write_begin(NULL, page->mapping, pos, rec_len, 0,
-							&page, NULL);
+	err = lkfs_prepare_chunk(page, pos, rec_len);
 	if (err)
 		goto out_unlock;
 	if (de->inode) {
 		struct lkfs_dir_entry_2 *de1 = (struct lkfs_dir_entry_2 *) ((char *) de + name_len);
 		de1->rec_len = (rec_len - name_len);
-		de->rec_len = (name_len);
+		de->rec_len = name_len;
 		de = de1;
 	}
 	de->name_len = namelen;
 	memcpy(de->name, name, namelen);
 	de->inode = cpu_to_le32(inode->i_ino);
-	//ext2_set_de_type (de, inode);
-	//err = ext2_commit_chunk(page, pos, rec_len);
+	
+	err = lkfs_commit_chunk(page, pos, rec_len);
 	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-	//EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
+	dir->i_nlink++;
 	mark_inode_dirty(dir);
 	/* OFFSET_CACHE */
 out_put:
@@ -170,7 +192,6 @@ out:
 out_unlock:
 	unlock_page(page);
 	goto out_put;
-#endif
 }
 
 static int lkfs_readdir (struct file * filp, void * dirent, filldir_t filldir)
@@ -178,46 +199,48 @@ static int lkfs_readdir (struct file * filp, void * dirent, filldir_t filldir)
 	loff_t pos = filp->f_pos;
 	struct inode *inode = filp->f_path.dentry->d_inode;
 	struct super_block *sb = inode->i_sb;
-	unsigned int offset = pos & 1023;
-	unsigned long n = pos >> 10;
-	unsigned long nblocks;
-	
+	unsigned int offset = pos & ~PAGE_CACHE_MASK;
+	unsigned long n = pos >> PAGE_CACHE_SHIFT;
+	unsigned long npages = dir_pages(inode);
+	unsigned chunk_mask = ~(1024-1);
 	unsigned char *types = NULL;
 	int need_revalidate = filp->f_version != inode->i_version;
-	struct buffer_head *bh;
-	nblocks = (inode->i_size + 1023) >> 10;
-	
-	for ( ; n < nblocks; n++, offset = 0) {
-		lkfs_debug("n = %d, offset = %d\n", n, offset);
+
+	if (pos > inode->i_size - LKFS_DIR_REC_LEN(1))
+		return 0;
+
+	for ( ; n < npages; n++, offset = 0) {
+		char *kaddr, *limit;
 		struct lkfs_dir_entry_2 *de;
-		bh = sb_bread(sb, LKFS_I(inode)->i_data[n]);
-		de = (struct lkfs_dir_entry_2 *)(bh->b_data + offset);
-		int de_offset = offset;
+		struct page *page = lkfs_get_page(inode, n, 0);
+
+		kaddr = page_address(page);
 		
-		for ( ;de_offset <= 1012; de = lkfs_next_entry(de)) {
+		de = (struct lkfs_dir_entry_2 *)(kaddr+offset);
+		limit = kaddr + lkfs_last_byte(inode, n) - LKFS_DIR_REC_LEN(1);
+		for ( ;(char*)de <= limit; de = lkfs_next_entry(de)) {
 			if (de->rec_len == 0) {
 				lkfs_debug("zero-length directory entry");
-				brelse(bh);
+				lkfs_put_page(page);
 				return -EIO;
 			}
 			if (de->inode) {
 				int over;
 				unsigned char d_type = DT_UNKNOWN;
-				//lkfs_debug("de->name = %a, de->name_len = %u\n", de->name, de->name_len);
 
+				offset = (char *)de - kaddr;
 				over = filldir(dirent, de->name, de->name_len,
-						filp->f_pos, le32_to_cpu(de->inode), d_type);
+						(n<<PAGE_CACHE_SHIFT) | offset,
+						le32_to_cpu(de->inode), d_type);
 				if (over) {
-					brelse(bh);
+					lkfs_put_page(page);
 					return 0;
 				}
 			}
-			de_offset += de->rec_len;
-			filp->f_pos += de->rec_len;
+			filp->f_pos += (de->rec_len);
 		}
+		lkfs_put_page(page);
 	}
-	if (!bh)
-		brelse(bh);
 	return 0;
 }
 

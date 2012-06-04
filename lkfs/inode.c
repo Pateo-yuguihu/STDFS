@@ -8,7 +8,25 @@
 #include <linux/mpage.h>
 #include <linux/fiemap.h>
 #include <linux/namei.h>
+#include <asm-generic/bitops/le.h>
 #include "lkfs.h"
+
+static int lkfs_new_blocks(struct inode *inode, sector_t iblock)
+{
+	int block_no;
+	struct super_block *sb = inode->i_sb;
+	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
+	
+	block_no = generic_find_next_zero_le_bit((unsigned long *)es->blockbitmap, 1024, 34);
+	lkfs_debug("find free block number:%d\n", block_no);
+	generic___test_and_set_le_bit(block_no, (unsigned long *)es->blockbitmap);
+	es->s_free_blocks_count--;
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
+	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
+	LKFS_I(inode)->i_data[iblock] = block_no;
+	
+	return block_no;
+}
 
 static int lkfs_get_blocks(struct inode *inode,
 			   sector_t iblock, unsigned long maxblocks,
@@ -19,12 +37,15 @@ static int lkfs_get_blocks(struct inode *inode,
 	if (create == 0) {
 		lkfs_debug("read blocks\n");
 	} else
-		lkfs_debug("write err\n");
+		lkfs_debug("write blocks\n");
 	
 	if (LKFS_I(inode)->i_data[iblock] != 0)
 		map_bh(bh_result, inode->i_sb, LKFS_I(inode)->i_data[iblock]);
-	else
-		lkfs_debug("I need get a new block\n");
+	else {
+		if (!lkfs_new_blocks(inode, iblock))
+			lkfs_debug("can't get a new block\n");
+		map_bh(bh_result, inode->i_sb, LKFS_I(inode)->i_data[iblock]);
+	}	
 	return 1;
 }
 
@@ -45,12 +66,21 @@ static int lkfs_readpage(struct file *file, struct page *page)
 	return mpage_readpage(page, lkfs_get_block);
 }
 
-int __lkfs_write_begin(struct file *file, struct address_space *mapping,
-		loff_t pos, unsigned len, unsigned flags,
-		struct page **pagep, void **fsdata)
+static int
+lkfs_readpages(struct file *file, struct address_space *mapping,
+		struct list_head *pages, unsigned nr_pages)
 {
-	return block_write_begin_newtrunc(file, mapping, pos, len, flags,
-					pagep, fsdata, lkfs_get_block);
+	return mpage_readpages(mapping, pages, nr_pages, lkfs_get_block);
+}
+
+static int lkfs_writepage(struct page *page, struct writeback_control *wbc)
+{
+	return block_write_full_page(page, lkfs_get_block, wbc);
+}
+
+static int lkfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
+{
+	return mpage_writepages(mapping, wbc, lkfs_get_block);
 }
 
 static int
@@ -60,23 +90,37 @@ lkfs_write_begin(struct file *file, struct address_space *mapping,
 {
 	int ret;
 
-	*pagep = NULL;
-	ret = __lkfs_write_begin(file, mapping, pos, len, flags, pagep, fsdata);
-	//if (ret < 0)
-	//	ext2_write_failed(mapping, pos + len);
+	ret = block_write_begin(mapping, pos, len, flags, pagep,
+				lkfs_get_block);
 	return ret;
 }
 
+static int lkfs_write_end(struct file *file, struct address_space *mapping,
+			loff_t pos, unsigned len, unsigned copied,
+			struct page *page, void *fsdata)
+{
+	int ret;
+
+	ret = generic_write_end(file, mapping, pos, len, copied, page, fsdata);
+	return ret;
+}
+
+static sector_t lkfs_bmap(struct address_space *mapping, sector_t block)
+{
+	return generic_block_bmap(mapping, block, lkfs_get_block);
+}
+
+
 const struct address_space_operations lkfs_aops = {
 	.readpage		= lkfs_readpage,
-/*	.readpages		= ext2_readpages,
-	.writepage		= ext2_writepage,
+	.readpages		= lkfs_readpages,
+	.writepage		= lkfs_writepage,
 	.sync_page		= block_sync_page,
-	.write_begin		= ext2_write_begin,
-	.write_end		= ext2_write_end,
-	.bmap			= ext2_bmap,
-	.direct_IO		= ext2_direct_IO,
-	.writepages		= ext2_writepages,*/
+	.write_begin	= lkfs_write_begin,
+	.write_end		= lkfs_write_end,
+	.bmap			= lkfs_bmap,
+/*	.direct_IO		= ext2_direct_IO,*/
+	.writepages		= lkfs_writepages,
 	.migratepage		= buffer_migrate_page,
 	.is_partially_uptodate	= block_is_partially_uptodate,
 	.error_remove_page	= generic_error_remove_page,

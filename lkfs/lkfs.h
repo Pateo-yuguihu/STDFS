@@ -1,7 +1,6 @@
 #include <linux/fs.h>
 #ifndef _LKFS_H_
 #define _LKFS_H_
-
 /*
  * Structure of a directory entry
  */
@@ -137,9 +136,8 @@ struct lkfs_sb_info {
  */
 #ifdef LKFS_DEBUG
 #define lkfs_debug(f, a...)	do { \
-					printk ("LKFS-fs DEBUG (%s, %d): %s:", \
-						__FILE__, __LINE__, __func__); \
-				  	printk (f, ## a); \
+						printk ("LKFS-fs(%s,%d,%s)", __FILE__, __LINE__, __func__); \
+				  		printk (f, ## a); \
 					} while(0)
 #else
 #define lkfs_debug(f, a...)	/**/
@@ -164,6 +162,7 @@ int lkfs_sync_inode (struct inode *);
 int __lkfs_write_begin(struct file *file, struct address_space *mapping,
 		loff_t pos, unsigned len, unsigned flags,
 		struct page **pagep, void **fsdata);
+int lkfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create);
 
 
 /*extern void ext2_evict_inode(struct inode *);
