@@ -4,4 +4,4 @@
 
 obj-$(CONFIG_LKFS_FS) += lkfs.o
 
-lkfs-y := super.o inode.o
+lkfs-y := super.o inode.o dir.o file.o namei.o ialloc.o

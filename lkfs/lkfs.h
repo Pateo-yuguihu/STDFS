@@ -1,13 +1,6 @@
 #include <linux/fs.h>
 #ifndef _LKFS_H_
 #define _LKFS_H_
-/*
- * lake file system inode data in memory
- */
-struct lkfs_inode_info {
-	__le32	i_data[15];
-	struct inode	vfs_inode;
-};
 
 /*
  * Structure of a directory entry
@@ -46,6 +39,14 @@ enum {
 #define	LKFS_N_BLOCKS			(LKFS_DIND_BLOCK + 1)
 
 /*
+ * lake file system inode data in memory
+ */
+struct lkfs_inode_info {
+	__le32	i_data[LKFS_N_BLOCKS];
+	struct inode	vfs_inode;
+};
+
+/*
  * Structure of an inode on the disk
  */
 struct lkfs_inode {
@@ -66,6 +67,9 @@ struct lkfs_inode {
 
 #define LKFS_GOOD_OLD_INODE_SIZE 128
 #define LKFS_SUPER_MAGIC	0x8309
+#define LKFS_INODE_PER_SB_BIT 3
+#define LKFS_INODE_PER_SB 8
+#define LKFS_INODE_SIZE 128
 /*
  * Special inode numbers
  */
@@ -122,16 +126,21 @@ struct lkfs_sb_info {
 	unsigned long s_dir_count;
 };
 
+#define LKFS_DIR_PAD		 	4
+#define LKFS_DIR_ROUND 			(LKFS_DIR_PAD - 1)
+#define LKFS_DIR_REC_LEN(name_len)	(((name_len) + 8 + LKFS_DIR_ROUND) & \
+					 ~LKFS_DIR_ROUND)
+
 #define LKFS_DEBUG
 /*
  * Debug code
  */
 #ifdef LKFS_DEBUG
-#define lkfs_debug(f, a...)	{ \
+#define lkfs_debug(f, a...)	do { \
 					printk ("LKFS-fs DEBUG (%s, %d): %s:", \
 						__FILE__, __LINE__, __func__); \
 				  	printk (f, ## a); \
-					}
+					} while(0)
 #else
 #define lkfs_debug(f, a...)	/**/
 #endif
@@ -145,13 +154,19 @@ static inline struct lkfs_sb_info *LKFS_SB(struct super_block *sb)
 {
 	return sb->s_fs_info;
 }
-
+/* super.c */
+extern const struct address_space_operations lkfs_aops;
 
 /* inode.c */
-extern struct inode *lkfs_iget (struct super_block *, unsigned long);
-/*extern int ext2_write_inode (struct inode *, struct writeback_control *);
-extern void ext2_evict_inode(struct inode *);
-extern int ext2_sync_inode (struct inode *);
+struct inode *lkfs_iget (struct super_block *, unsigned long);
+int lkfs_write_inode (struct inode *, struct writeback_control *);
+int lkfs_sync_inode (struct inode *);
+int __lkfs_write_begin(struct file *file, struct address_space *mapping,
+		loff_t pos, unsigned len, unsigned flags,
+		struct page **pagep, void **fsdata);
+
+
+/*extern void ext2_evict_inode(struct inode *);
 extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
 extern int ext2_setattr (struct dentry *, struct iattr *);
 extern void ext2_set_inode_flags(struct inode *inode);
@@ -160,4 +175,18 @@ extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 		       u64 start, u64 len);
 */
 
+/*lkfs/file.c*/
+extern const struct file_operations lkfs_file_operations;
+extern const struct inode_operations lkfs_file_inode_operations;
+
+/*lkfs/namei.c*/
+extern const struct inode_operations lkfs_dir_inode_operations;
+extern const struct inode_operations lkfs_special_inode_operations;
+
+/*lkfs/dir.c*/
+extern const struct file_operations lkfs_dir_operations;
+int lkfs_add_link (struct dentry *dentry, struct inode *inode);
+
+/*lkfs/ialloc.c*/
+struct inode *lkfs_new_inode(struct inode *dir, int mode);
 #endif

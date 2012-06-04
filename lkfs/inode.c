@@ -10,8 +10,225 @@
 #include <linux/namei.h>
 #include "lkfs.h"
 
+static int lkfs_get_blocks(struct inode *inode,
+			   sector_t iblock, unsigned long maxblocks,
+			   struct buffer_head *bh_result,
+			   int create)
+{
+	int err = 0;
+	if (create == 0) {
+		lkfs_debug("read blocks\n");
+	} else
+		lkfs_debug("write err\n");
+	
+	if (LKFS_I(inode)->i_data[iblock] != 0)
+		map_bh(bh_result, inode->i_sb, LKFS_I(inode)->i_data[iblock]);
+	else
+		lkfs_debug("I need get a new block\n");
+	return 1;
+}
+
+int lkfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create)
+{
+	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+	int ret = lkfs_get_blocks(inode, iblock, max_blocks,
+			      bh_result, create);
+	if (ret > 0) {
+		bh_result->b_size = (ret << inode->i_blkbits);
+		ret = 0;
+	}
+	return ret;
+}
+
+static int lkfs_readpage(struct file *file, struct page *page)
+{
+	return mpage_readpage(page, lkfs_get_block);
+}
+
+int __lkfs_write_begin(struct file *file, struct address_space *mapping,
+		loff_t pos, unsigned len, unsigned flags,
+		struct page **pagep, void **fsdata)
+{
+	return block_write_begin_newtrunc(file, mapping, pos, len, flags,
+					pagep, fsdata, lkfs_get_block);
+}
+
+static int
+lkfs_write_begin(struct file *file, struct address_space *mapping,
+		loff_t pos, unsigned len, unsigned flags,
+		struct page **pagep, void **fsdata)
+{
+	int ret;
+
+	*pagep = NULL;
+	ret = __lkfs_write_begin(file, mapping, pos, len, flags, pagep, fsdata);
+	//if (ret < 0)
+	//	ext2_write_failed(mapping, pos + len);
+	return ret;
+}
+
+const struct address_space_operations lkfs_aops = {
+	.readpage		= lkfs_readpage,
+/*	.readpages		= ext2_readpages,
+	.writepage		= ext2_writepage,
+	.sync_page		= block_sync_page,
+	.write_begin		= ext2_write_begin,
+	.write_end		= ext2_write_end,
+	.bmap			= ext2_bmap,
+	.direct_IO		= ext2_direct_IO,
+	.writepages		= ext2_writepages,*/
+	.migratepage		= buffer_migrate_page,
+	.is_partially_uptodate	= block_is_partially_uptodate,
+	.error_remove_page	= generic_error_remove_page,
+};
+
+int lkfs_sync_inode(struct inode *inode)
+{
+	struct writeback_control wbc = {
+		.sync_mode = WB_SYNC_ALL,
+		.nr_to_write = 0,	/* sys_fsync did this */
+	};
+	return sync_inode(inode, &wbc);
+}
+
+static struct lkfs_inode *lkfs_get_inode(struct super_block *sb, ino_t ino,
+					struct buffer_head **p)
+{
+	struct buffer_head * bh;
+	unsigned long block_group;
+	unsigned long block;
+	unsigned long offset;
+
+	block = ((ino - 1) >> LKFS_INODE_PER_SB_BIT) + 2;
+	offset = ((ino - 1) % LKFS_INODE_PER_SB) * LKFS_INODE_SIZE;
+	
+	if (!(bh = sb_bread(sb, block)))
+		goto Eio;
+
+	*p = bh;
+	return (struct lkfs_inode *) (bh->b_data + offset);
+
+Einval:
+	lkfs_debug("bad inode number: %lu", (unsigned long) ino);
+	return ERR_PTR(-EINVAL);
+Eio:
+	lkfs_debug("unable to read inode block - inode=%lu, block=%lu",
+		   (unsigned long) ino, block);
+Egdp:
+	return ERR_PTR(-EIO);
+}
+
+static int __lkfs_write_inode(struct inode *inode, int do_sync)
+{
+	struct lkfs_inode_info *ei = LKFS_I(inode);
+	struct super_block *sb = inode->i_sb;
+	ino_t ino = inode->i_ino;
+	uid_t uid = inode->i_uid;
+	gid_t gid = inode->i_gid;
+	struct buffer_head * bh;
+	struct lkfs_inode * raw_inode = lkfs_get_inode(sb, ino, &bh);
+	int n;
+	int err = 0;
+	lkfs_debug("inode:%d\n", inode->i_ino);
+	if (IS_ERR(raw_inode))
+ 		return -EIO;
+
+	/* For fields not not tracking in the in-memory inode,
+	 * initialise them to zero for new inodes. */
+	//if (ei->i_state & EXT2_STATE_NEW)
+	memset(raw_inode, 0, 128);
+
+	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
+
+	raw_inode->i_uid = cpu_to_le16(inode->i_uid);
+	raw_inode->i_gid = cpu_to_le16(inode->i_gid);
+
+	raw_inode->i_links_count = cpu_to_le16(inode->i_nlink);
+	raw_inode->i_size = cpu_to_le32(inode->i_size);
+	raw_inode->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
+	raw_inode->i_ctime = cpu_to_le32(inode->i_ctime.tv_sec);
+	raw_inode->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
+
+	raw_inode->i_blocks = cpu_to_le32(inode->i_blocks);
+
+	for (n = 0; n < LKFS_N_BLOCKS; n++)
+		raw_inode->i_block[n] = ei->i_data[n];
+	mark_buffer_dirty(bh);
+	
+	sync_dirty_buffer(bh);
+	if (buffer_req(bh) && !buffer_uptodate(bh)) {
+		lkfs_debug("IO error syncing lkfs inode [%s:%08lx]\n",
+			sb->s_id, (unsigned long) ino);
+		err = -EIO;
+	}
+	brelse (bh);
+	return err;
+}
+
+int lkfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+{
+	return __lkfs_write_inode(inode, wbc->sync_mode == WB_SYNC_ALL);
+}
+
 struct inode *lkfs_iget (struct super_block *sb, unsigned long ino)
 {
-	return NULL;
+	struct lkfs_inode_info *ei;
+	struct buffer_head * bh;
+	struct lkfs_inode *raw_inode;
+	struct inode *inode;
+	long ret = -EIO;
+	int n;
+
+	inode = iget_locked(sb, ino);
+	if (!inode)
+		return ERR_PTR(-ENOMEM);
+	if (!(inode->i_state & I_NEW))
+		return inode;
+
+	ei = LKFS_I(inode);
+
+	raw_inode = lkfs_get_inode(inode->i_sb, ino, &bh);
+	if (IS_ERR(raw_inode)) {
+		ret = PTR_ERR(raw_inode);
+ 		goto bad_inode;
+	}
+	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+	inode->i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid);
+	inode->i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid);
+
+	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
+	inode->i_size = le32_to_cpu(raw_inode->i_size);
+	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
+	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
+	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
+	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
+
+	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
+
+	/*
+	 * NOTE! The in-memory inode i_data array is in little-endian order
+	 * even on big-endian machines: we do NOT byteswap the block numbers!
+	 */
+	for (n = 0; n < LKFS_N_BLOCKS; n++)
+		ei->i_data[n] = raw_inode->i_block[n];
+
+	if (S_ISREG(inode->i_mode)) {
+
+		inode->i_op = &lkfs_file_inode_operations;
+		inode->i_mapping->a_ops = &lkfs_aops;
+		inode->i_fop = &lkfs_file_operations;
+	} else if (S_ISDIR(inode->i_mode)) {
+		lkfs_debug("ino:%d, dir\n", inode->i_ino);
+		inode->i_op = &lkfs_dir_inode_operations;
+		inode->i_fop = &lkfs_dir_operations;
+		inode->i_mapping->a_ops = &lkfs_aops;
+	}
+	brelse (bh);
+	unlock_new_inode(inode);
+	return inode;
+	
+bad_inode:
+	iget_failed(inode);
+	return ERR_PTR(ret);
 }
 

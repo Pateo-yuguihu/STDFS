@@ -1,5 +1,9 @@
 /*
  * linux/fs/lkfs/super.c
+ * 
+ * Disk struct:
+ * [boot block 0 ][super block 1][inode table block 2 .. 33][data block 34 .. 1023]
+ * 
  * Copyright (C) 2012 Hu Yugui(yugui.hu@hotmail.com)
  */
 
@@ -67,8 +71,6 @@ static int lkfs_statfs (struct dentry * dentry, struct kstatfs * buf)
 	struct lkfs_super_block *es = sbi->s_es;
 	u64 fsid;
 
-	/* spin_lock(&sbi->s_lock); */
-
 	buf->f_type = LKFS_SUPER_MAGIC;
 	buf->f_bsize = sb->s_blocksize;
 	buf->f_blocks = le32_to_cpu(es->s_blocks_count);
@@ -83,17 +85,29 @@ static int lkfs_statfs (struct dentry * dentry, struct kstatfs * buf)
 	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
 	buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
 	buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
-	/* spin_unlock(&sbi->s_lock); */
 	return 0;
+}
+
+static void lkfs_sync_super(struct super_block *sb, int wait)
+{
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
+	if (wait)
+		sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* update superblock */
+	sb->s_dirt = 0;
+}
+
+void lkfs_write_super(struct super_block *sb)
+{
+	lkfs_sync_super(sb, 1);
 }
 
 static const struct super_operations lkfs_sops = {
 	.alloc_inode	= lkfs_alloc_inode,
 	.destroy_inode	= lkfs_destroy_inode,
-	/*.write_inode	= lkfs_write_inode,
-	.put_super	= lkfs_put_super,
+	.write_inode	= lkfs_write_inode,
+	//.put_super	= lkfs_put_super,
 	.write_super	= lkfs_write_super,
-	.sync_fs	= lkfs_sync_fs,*/
+/*	.sync_fs	= lkfs_sync_fs,*/
 	.statfs		= lkfs_statfs,
 	/*.remount_fs	= lkfs_remount,*/
 };
@@ -117,8 +131,6 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_fs_info = sbi;
 	sbi->s_sb_block = 1; /* boot block */
 
-	/* spin_lock_init(&sbi->s_lock); */
-
 	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
 	if (!blocksize) {
 		lkfs_debug("error: unable to set blocksize\n");
@@ -129,29 +141,24 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 		lkfs_debug("error: unable to read superblock\n");
 		goto failed_sbi;
 	}
-
+	sbi->s_sbh = bh; /* super block buffer head in memory */
 	es = (struct lkfs_super_block *) (((char *)bh->b_data) + offset);
 	sbi->s_es = es;
 	sb->s_magic = le16_to_cpu(es->s_magic);
-
+	lkfs_debug("lkfs id: %s\n", es->s_volume_name);
 	if (sb->s_magic != LKFS_SUPER_MAGIC)
 		goto cantfind_lkfs;
 
 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
 	sbi->s_inode_size = LKFS_GOOD_OLD_INODE_SIZE;
 	sbi->s_first_ino = LKFS_GOOD_OLD_FIRST_INO;
-	
+	sb->s_maxbytes = 8192 << 10;
 
 	if (sb->s_blocksize != bh->b_size) {
 			lkfs_debug(sb, KERN_ERR, "error: unsupported blocksize\n");
 		goto failed_mount;
 	}
 
-	//get_random_bytes(&sbi->s_next_generation, sizeof(u32));
-
-	/*
-	 * set up enough so that it can read an inode
-	 */
 	sb->s_op = &lkfs_sops;
 
 	root = lkfs_iget(sb, LKFS_ROOT_INO);
