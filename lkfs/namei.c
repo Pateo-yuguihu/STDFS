@@ -85,9 +85,11 @@ static inline int lkfs_add_nondir(struct dentry *dentry, struct inode *inode)
 	int err = lkfs_add_link(dentry, inode);
 	if (!err) {
 		d_instantiate(dentry, inode);
+		unlock_new_inode(inode);
 		return 0;
 	}
 	inode_dec_link_count(inode);
+	unlock_new_inode(inode);
 	iput(inode);
 	return err;
 }
@@ -135,7 +137,47 @@ static int lkfs_link (struct dentry * old_dentry, struct inode * dir,
 
 static int lkfs_mkdir(struct inode * dir, struct dentry * dentry, int mode)
 {
-	return 0;
+	struct inode * inode;
+	int err = -EMLINK;
+
+	if (dir->i_nlink >= 32000)
+		goto out;
+
+	inode_inc_link_count(dir);
+
+	inode = lkfs_new_inode (dir, S_IFDIR | mode);
+	err = PTR_ERR(inode);
+	if (IS_ERR(inode))
+		goto out_dir;
+
+	inode->i_op = &lkfs_dir_inode_operations;
+	inode->i_fop = &lkfs_dir_operations;
+
+	inode->i_mapping->a_ops = &lkfs_aops;
+
+	inode_inc_link_count(inode);
+
+	err = lkfs_make_empty(inode, dir);
+	if (err)
+		goto out_fail;
+
+	err = lkfs_add_link(dentry, inode);
+	if (err)
+		goto out_fail;
+
+	d_instantiate(dentry, inode);
+	unlock_new_inode(inode);
+out:
+	return err;
+
+out_fail:
+	inode_dec_link_count(inode);
+	inode_dec_link_count(inode);
+	unlock_new_inode(inode);
+	iput(inode);
+out_dir:
+	inode_dec_link_count(dir);
+	goto out;
 }
 
 static int lkfs_unlink(struct inode * dir, struct dentry *dentry)
@@ -167,10 +209,10 @@ const struct inode_operations lkfs_dir_inode_operations = {
 	.rmdir		= lkfs_rmdir,
 	.mknod		= lkfs_mknod,
 	.rename		= lkfs_rename,
-	//.setattr	= lkfs_setattr,
+	.setattr	= lkfs_setattr,
 };
 
 const struct inode_operations lkfs_special_inode_operations = {
-	//.setattr	= lkfs_setattr,
+	.setattr	= lkfs_setattr,
 };
 

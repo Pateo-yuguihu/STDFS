@@ -177,6 +177,7 @@ extern const struct inode_operations lkfs_special_inode_operations;
 /*lkfs/dir.c*/
 extern const struct file_operations lkfs_dir_operations;
 int lkfs_add_link (struct dentry *dentry, struct inode *inode);
+int lkfs_make_empty(struct inode *inode, struct inode *parent);
 
 /*lkfs/ialloc.c*/
 struct inode *lkfs_new_inode(struct inode *dir, int mode);

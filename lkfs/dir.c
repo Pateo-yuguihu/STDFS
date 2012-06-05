@@ -197,6 +197,48 @@ out_unlock:
 	goto out_put;
 }
 
+/*
+ * Set the first fragment of directory.
+ */
+int lkfs_make_empty(struct inode *inode, struct inode *parent)
+{
+	struct address_space *mapping = inode->i_mapping;
+	struct page *page = grab_cache_page(mapping, 0);
+	unsigned chunk_size = 1024;
+	struct lkfs_dir_entry_2 * de;
+	int err;
+	void *kaddr;
+
+	if (!page)
+		return -ENOMEM;
+
+	err = __lkfs_write_begin(NULL, page->mapping, 0, chunk_size, 0,
+							&page, NULL);
+	if (err) {
+		unlock_page(page);
+		goto fail;
+	}
+	kaddr = kmap_atomic(page, KM_USER0);
+	memset(kaddr, 0, chunk_size);
+	de = (struct lkfs_dir_entry_2 *)kaddr;
+	de->name_len = 1;
+	de->rec_len = LKFS_DIR_REC_LEN(1);
+	memcpy (de->name, ".\0\0", 4);
+	de->inode = cpu_to_le32(inode->i_ino);
+	//ext2_set_de_type (de, inode);
+
+	de = (struct lkfs_dir_entry_2 *)(kaddr + LKFS_DIR_REC_LEN(1));
+	de->name_len = 2;
+	de->rec_len = chunk_size - LKFS_DIR_REC_LEN(1);
+	de->inode = cpu_to_le32(parent->i_ino);
+	memcpy (de->name, "..\0", 4);
+	kunmap_atomic(kaddr, KM_USER0);
+	err = lkfs_commit_chunk(page, 0, chunk_size);
+fail:
+	page_cache_release(page);
+	return err;
+}
+
 static int lkfs_readdir (struct file * filp, void * dirent, filldir_t filldir)
 {
 	loff_t pos = filp->f_pos;

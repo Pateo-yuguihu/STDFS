@@ -34,6 +34,7 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	ino = generic_find_next_zero_le_bit((unsigned long *)es->inodebitmap, 256, dir->i_ino);
 	lkfs_debug("find free inode number:%d\n", ino);
 	generic___test_and_set_le_bit(ino, (unsigned long *)es->inodebitmap);
+
 	
 	mark_buffer_dirty(sbi->s_sbh);
 	sync_dirty_buffer(sbi->s_sbh);
@@ -47,7 +48,21 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
 	memset(ei->i_data, 0, sizeof(ei->i_data));
 	es->s_free_inodes_count--;
+
+	if (insert_inode_locked(inode) < 0) {
+		err = -EINVAL;
+		goto fail_drop;
+	}
+	
 	mark_inode_dirty(inode);
 	return inode;
+
+fail_drop:
+	inode->i_flags |= S_NOQUOTA;
+	inode->i_nlink = 0;
+	unlock_new_inode(inode);
+	iput(inode);
+	return ERR_PTR(err);
+
 }
 
