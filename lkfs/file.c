@@ -15,8 +15,8 @@ static int lkfs_release_file (struct inode * inode, struct file * filp)
 int lkfs_fsync(struct file *file, int datasync)
 {
 	int ret;
-	struct super_block *sb = file->f_mapping->host->i_sb;
-	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
+	//struct super_block *sb = file->f_mapping->host->i_sb;
+	//struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
 
 	ret = generic_file_fsync(file, datasync);
 	return ret;

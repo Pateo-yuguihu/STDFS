@@ -77,10 +77,8 @@ struct lkfs_inode {
 struct lkfs_super_block {
 	__le32	s_inodes_count;		/* Inodes count */
 	__le32	s_blocks_count;		/* Blocks count */
-	__le32	s_r_blocks_count;	/* Reserved blocks count */
 	__le32	s_free_blocks_count;	/* Free blocks count */
 	__le32	s_free_inodes_count;	/* Free inodes count */
-	__le32	s_first_data_block;	/* First Data Block */
 	__le32	s_log_block_size;	/* Block size */
 	__le32	s_mtime;		/* Mount time */
 	__le32	s_wtime;		/* Write time */
@@ -95,5 +93,6 @@ struct lkfs_super_block {
 	char blockbitmap[128];	/* block bitmap: 8 * 128 = 1024 */
 	char inodebitmap[32];  /* inode bitmap : 8 * 32 = 256 */
 };
+
 
 #endif

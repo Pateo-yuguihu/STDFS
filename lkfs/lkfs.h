@@ -85,10 +85,8 @@ struct lkfs_inode {
 struct lkfs_super_block {
 	__le32	s_inodes_count;		/* Inodes count */
 	__le32	s_blocks_count;		/* Blocks count */
-	__le32	s_r_blocks_count;	/* Reserved blocks count */
 	__le32	s_free_blocks_count;	/* Free blocks count */
 	__le32	s_free_inodes_count;	/* Free inodes count */
-	__le32	s_first_data_block;	/* First Data Block */
 	__le32	s_log_block_size;	/* Block size */
 	__le32	s_mtime;		/* Mount time */
 	__le32	s_wtime;		/* Write time */
@@ -108,21 +106,9 @@ struct lkfs_super_block {
  * lkfs-fs super-block data in memory
  */
 struct lkfs_sb_info {
-	unsigned long s_frag_size;	/* Size of a fragment in bytes */
-	unsigned long s_frags_per_block;/* Number of fragments per block */
-	unsigned long s_inodes_per_block;/* Number of inodes per block */
-	unsigned long s_frags_per_group;/* Number of fragments in a group */
-	unsigned long s_blocks_per_group;/* Number of blocks in a group */
-	unsigned long s_inodes_per_group;/* Number of inodes in a group */
-	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
 	struct lkfs_super_block * s_es;	/* Pointer to the super block in the buffer */
-	unsigned long s_sb_block;
-	uid_t s_resuid;
-	gid_t s_resgid;
 	int s_inode_size;
-	int s_first_ino;
-	unsigned long s_dir_count;
 };
 
 #define LKFS_DIR_PAD		 	4

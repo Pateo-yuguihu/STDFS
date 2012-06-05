@@ -30,10 +30,6 @@ static struct page * lkfs_get_page(struct inode *dir, unsigned long n,
 
 	}
 	return page;
-
-fail:
-	lkfs_put_page(page);
-	return ERR_PTR(-EIO);
 }
 
 /*
@@ -117,7 +113,7 @@ int lkfs_add_link (struct dentry *dentry, struct inode *inode)
 	 * This code plays outside i_size, so it locks the page
 	 * to protect that region.
 	 */
-	for (n = 0; n <= npages; n++) {
+	for (n = 0; n <= npages; n++) {  /* lkfs_get_page can allocate pages & blocks */
 		char *dir_end;
 
 		page = lkfs_get_page(dir, n, 0);
@@ -243,13 +239,10 @@ static int lkfs_readdir (struct file * filp, void * dirent, filldir_t filldir)
 {
 	loff_t pos = filp->f_pos;
 	struct inode *inode = filp->f_path.dentry->d_inode;
-	struct super_block *sb = inode->i_sb;
+	//struct super_block *sb = inode->i_sb;
 	unsigned int offset = pos & ~PAGE_CACHE_MASK;
 	unsigned long n = pos >> PAGE_CACHE_SHIFT;
 	unsigned long npages = dir_pages(inode);
-	unsigned chunk_mask = ~(1024-1);
-	unsigned char *types = NULL;
-	int need_revalidate = filp->f_version != inode->i_version;
 
 	if (pos > inode->i_size - LKFS_DIR_REC_LEN(1))
 		return 0;

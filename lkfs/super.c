@@ -52,7 +52,7 @@ static void destroy_inodecache(void)
 static struct inode *lkfs_alloc_inode(struct super_block *sb)
 {
 	struct lkfs_inode_info *ei;
-	ei = (struct ext2_inode_info *)kmem_cache_alloc(lkfs_inode_cachep, GFP_KERNEL);
+	ei = (struct lkfs_inode_info *)kmem_cache_alloc(lkfs_inode_cachep, GFP_KERNEL);
 	if (!ei)
 		return NULL;
 	ei->vfs_inode.i_version = 1;
@@ -75,9 +75,8 @@ static int lkfs_statfs (struct dentry * dentry, struct kstatfs * buf)
 	buf->f_bsize = sb->s_blocksize;
 	buf->f_blocks = le32_to_cpu(es->s_blocks_count);
 	buf->f_bfree = le32_to_cpu(es->s_free_blocks_count);
-	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
-	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
-		buf->f_bavail = 0;
+	buf->f_bavail = buf->f_bfree;
+
 	buf->f_files = le32_to_cpu(es->s_inodes_count);
 	buf->f_ffree = le32_to_cpu(es->s_free_inodes_count );
 	buf->f_namelen = LKFS_NAME_LEN;
@@ -135,18 +134,15 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 	struct lkfs_sb_info * sbi;
 	struct lkfs_super_block * es;
 	struct inode *root;
-	unsigned long block;
 	unsigned long offset = 0;
 	long ret = -EINVAL;
 	int blocksize = BLOCK_SIZE;
-	int err;
 
 	sbi = kzalloc(sizeof(struct lkfs_sb_info), GFP_KERNEL);
 	if (!sbi)
 		return -ENOMEM;
 
 	sb->s_fs_info = sbi;
-	sbi->s_sb_block = 1; /* boot block */
 
 	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
 	if (!blocksize) {
@@ -168,11 +164,10 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 
 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
 	sbi->s_inode_size = LKFS_GOOD_OLD_INODE_SIZE;
-	sbi->s_first_ino = LKFS_GOOD_OLD_FIRST_INO;
 	sb->s_maxbytes = 8192 << 10;
 
 	if (sb->s_blocksize != bh->b_size) {
-			lkfs_debug(sb, KERN_ERR, "error: unsupported blocksize\n");
+			lkfs_debug("error: unsupported blocksize\n");
 		goto failed_mount;
 	}
 

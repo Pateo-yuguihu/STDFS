@@ -33,7 +33,6 @@ static int lkfs_get_blocks(struct inode *inode,
 			   struct buffer_head *bh_result,
 			   int create)
 {
-	int err = 0;
 	if (create == 0) {
 		lkfs_debug("read blocks\n");
 	} else
@@ -119,7 +118,6 @@ lkfs_write_begin(struct file *file, struct address_space *mapping,
 		struct page **pagep, void **fsdata)
 {
 	int ret;
-
 	*pagep = NULL;
 	ret = __lkfs_write_begin(file, mapping, pos, len, flags, pagep, fsdata);
 	return ret;
@@ -153,7 +151,6 @@ static struct lkfs_inode *lkfs_get_inode(struct super_block *sb, ino_t ino,
 					struct buffer_head **p)
 {
 	struct buffer_head * bh;
-	unsigned long block_group;
 	unsigned long block;
 	unsigned long offset;
 
@@ -166,13 +163,12 @@ static struct lkfs_inode *lkfs_get_inode(struct super_block *sb, ino_t ino,
 	*p = bh;
 	return (struct lkfs_inode *) (bh->b_data + offset);
 
-Einval:
 	lkfs_debug("bad inode number: %lu", (unsigned long) ino);
 	return ERR_PTR(-EINVAL);
 Eio:
 	lkfs_debug("unable to read inode block - inode=%lu, block=%lu",
 		   (unsigned long) ino, block);
-Egdp:
+
 	return ERR_PTR(-EIO);
 }
 
@@ -181,13 +177,12 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 	struct lkfs_inode_info *ei = LKFS_I(inode);
 	struct super_block *sb = inode->i_sb;
 	ino_t ino = inode->i_ino;
-	uid_t uid = inode->i_uid;
-	gid_t gid = inode->i_gid;
+
 	struct buffer_head * bh;
 	struct lkfs_inode * raw_inode = lkfs_get_inode(sb, ino, &bh);
 	int n;
 	int err = 0;
-	lkfs_debug("inode:%d\n", inode->i_ino);
+	lkfs_debug("inode:%ld\n", inode->i_ino);
 	if (IS_ERR(raw_inode))
  		return -EIO;
 
@@ -276,7 +271,6 @@ struct inode *lkfs_iget (struct super_block *sb, unsigned long ino)
 		inode->i_mapping->a_ops = &lkfs_aops;
 		inode->i_fop = &lkfs_file_operations;
 	} else if (S_ISDIR(inode->i_mode)) {
-		lkfs_debug("ino:%d, dir\n", inode->i_ino);
 		inode->i_op = &lkfs_dir_inode_operations;
 		inode->i_fop = &lkfs_dir_operations;
 		inode->i_mapping->a_ops = &lkfs_aops;

@@ -58,7 +58,7 @@ static struct dentry *lkfs_lookup(struct inode * dir, struct dentry *dentry, str
 	struct lkfs_dir_entry_2 *de;
 	struct buffer_head *bh;
 
-	lkfs_debug("pinode:%d, dentry name: %s\n", dir->i_ino, dentry->d_name.name);
+	//lkfs_debug("pinode:%ld, dentry name: %s\n", dir->i_ino, dentry->d_name.name);
 	if (dentry->d_name.len > LKFS_NAME_LEN)
 		return ERR_PTR(-ENAMETOOLONG);
 
@@ -113,7 +113,7 @@ static int lkfs_create (struct inode * dir, struct dentry * dentry, int mode, st
 
 static int lkfs_mknod (struct inode * dir, struct dentry *dentry, int mode, dev_t rdev)
 {
-	struct inode * inode;
+	//struct inode * inode;
 	int err;
 
 	return err;
@@ -129,7 +129,7 @@ static int lkfs_symlink (struct inode * dir, struct dentry * dentry,
 static int lkfs_link (struct dentry * old_dentry, struct inode * dir,
 	struct dentry *dentry)
 {
-	struct inode *inode = old_dentry->d_inode;
+	//struct inode *inode = old_dentry->d_inode;
 	int err;
 
 	return err;
@@ -188,7 +188,7 @@ static int lkfs_unlink(struct inode * dir, struct dentry *dentry)
 
 static int lkfs_rmdir (struct inode * dir, struct dentry *dentry)
 {
-	struct inode * inode = dentry->d_inode;
+	//struct inode * inode = dentry->d_inode;
 	int err = -ENOTEMPTY;
 	return err;
 }

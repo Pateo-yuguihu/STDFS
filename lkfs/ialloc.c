@@ -13,8 +13,6 @@
 struct inode *lkfs_new_inode(struct inode *dir, int mode)
 {
 	struct super_block *sb;
-	struct buffer_head *bitmap_bh = NULL;
-	int group, i;
 	ino_t ino = 0;
 	struct inode * inode;
 	struct lkfs_super_block *es;
@@ -32,7 +30,7 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	es = sbi->s_es;
 
 	ino = generic_find_next_zero_le_bit((unsigned long *)es->inodebitmap, 256, dir->i_ino);
-	lkfs_debug("find free inode number:%d\n", ino);
+	lkfs_debug("find free inode number:%ld\n", ino);
 	generic___test_and_set_le_bit(ino, (unsigned long *)es->inodebitmap);
 
 	
