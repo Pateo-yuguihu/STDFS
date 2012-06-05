@@ -1,9 +1,19 @@
 /*
  * linux/fs/lkfs/super.c
  * 
- * Disk struct:
+ * Disk struct(V1):
+ * blocksize = 1024 maxsize = 1024 * 1024 = 1MiB
  * [boot block 0 ][super block 1][inode table block 2 .. 33][data block 34 .. 1023]
  * 
+ * (V2)
+ * [boot block0][super block1][blockbitmap n ][inodebitmap n/4] [inodetable bitmap] [data blocks...]
+ *
+ * blocksize =1024
+ * disksize = 64MiB
+ * block bitmap count = 64MiB/1024/8/1024= disksize/8M = 8(blocks)
+ * inode bitmap count = disksize /32M =2(blocks)
+ * inode table block count = 2 * 1024 *128 /1024 = 256(blocks)
+ *
  * Copyright (C) 2012 Hu Yugui(yugui.hu@hotmail.com)
  */
 
