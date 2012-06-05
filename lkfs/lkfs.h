@@ -159,9 +159,6 @@ extern const struct address_space_operations lkfs_aops;
 struct inode *lkfs_iget (struct super_block *, unsigned long);
 int lkfs_write_inode (struct inode *, struct writeback_control *);
 int lkfs_sync_inode (struct inode *);
-int __lkfs_write_begin(struct file *file, struct address_space *mapping,
-		loff_t pos, unsigned len, unsigned flags,
-		struct page **pagep, void **fsdata);
 int lkfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create);
 int lkfs_setattr (struct dentry *, struct iattr *);
 
@@ -178,6 +175,9 @@ extern const struct inode_operations lkfs_special_inode_operations;
 extern const struct file_operations lkfs_dir_operations;
 int lkfs_add_link (struct dentry *dentry, struct inode *inode);
 int lkfs_make_empty(struct inode *inode, struct inode *parent);
+int __lkfs_write_begin(struct file *file, struct address_space *mapping,
+		loff_t pos, unsigned len, unsigned flags,
+		struct page **pagep, void **fsdata);
 
 /*lkfs/ialloc.c*/
 struct inode *lkfs_new_inode(struct inode *dir, int mode);

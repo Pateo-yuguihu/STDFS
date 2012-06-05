@@ -83,18 +83,6 @@ static int lkfs_writepages(struct address_space *mapping, struct writeback_contr
 	return mpage_writepages(mapping, wbc, lkfs_get_block);
 }
 
-static int
-lkfs_write_begin(struct file *file, struct address_space *mapping,
-		loff_t pos, unsigned len, unsigned flags,
-		struct page **pagep, void **fsdata)
-{
-	int ret;
-
-	ret = block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
-				lkfs_get_block);
-	return ret;
-}
-
 static int lkfs_write_end(struct file *file, struct address_space *mapping,
 			loff_t pos, unsigned len, unsigned copied,
 			struct page *page, void *fsdata)
@@ -123,6 +111,18 @@ int lkfs_setattr(struct dentry *dentry, struct iattr *iattr)
 	mark_inode_dirty(inode);
 	error = lkfs_sync_inode(inode);
 	return error;
+}
+
+static int
+lkfs_write_begin(struct file *file, struct address_space *mapping,
+		loff_t pos, unsigned len, unsigned flags,
+		struct page **pagep, void **fsdata)
+{
+	int ret;
+
+	*pagep = NULL;
+	ret = __lkfs_write_begin(file, mapping, pos, len, flags, pagep, fsdata);
+	return ret;
 }
 
 const struct address_space_operations lkfs_aops = {

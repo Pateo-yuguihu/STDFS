@@ -101,11 +101,28 @@ void lkfs_write_super(struct super_block *sb)
 	lkfs_sync_super(sb, 1);
 }
 
+static void lkfs_put_super (struct super_block * sb)
+{
+	struct lkfs_sb_info *sbi = LKFS_SB(sb);
+
+	if (sb->s_dirt)
+		lkfs_write_super(sb);
+
+	if (!(sb->s_flags & MS_RDONLY)) {
+		lkfs_sync_super(sb, 1);
+	}
+
+	brelse (sbi->s_sbh);
+	sb->s_fs_info = NULL;
+	kfree(sbi);
+	lkfs_debug("umount lkfs\n");
+}
+
 static const struct super_operations lkfs_sops = {
 	.alloc_inode	= lkfs_alloc_inode,
 	.destroy_inode	= lkfs_destroy_inode,
 	.write_inode	= lkfs_write_inode,
-	//.put_super	= lkfs_put_super,
+	.put_super		= lkfs_put_super,
 	.write_super	= lkfs_write_super,
 /*	.sync_fs	= lkfs_sync_fs,*/
 	.statfs		= lkfs_statfs,
