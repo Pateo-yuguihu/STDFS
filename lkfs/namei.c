@@ -180,9 +180,26 @@ out_dir:
 	goto out;
 }
 
+/* just dec i_nlink number, if i_nlink number is 0, drop_inode can delete inode from disk */
 static int lkfs_unlink(struct inode * dir, struct dentry *dentry)
 {
+	struct inode * inode = dentry->d_inode;
+	struct lkfs_dir_entry_2 * de;
+	struct page * page;
 	int err = -ENOENT;
+
+	de = lkfs_find_entry(dir, &dentry->d_name, &page);
+	if (!de)
+		goto out;
+
+	err = lkfs_delete_entry (de, page);
+	if (err)
+		goto out;
+
+	inode->i_ctime = dir->i_ctime;
+	inode_dec_link_count(inode);
+	err = 0;
+out:
 	return err;
 }
 

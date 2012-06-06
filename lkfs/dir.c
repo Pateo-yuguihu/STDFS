@@ -32,6 +32,11 @@ static struct page * lkfs_get_page(struct inode *dir, unsigned long n,
 	return page;
 }
 
+static inline unsigned lkfs_chunk_size(struct inode *inode)
+{
+	return inode->i_sb->s_blocksize;
+}
+
 /*
  * Return the offset into page `page_nr' of the last valid
  * byte in that page, plus one.
@@ -232,6 +237,113 @@ int lkfs_make_empty(struct inode *inode, struct inode *parent)
 	err = lkfs_commit_chunk(page, 0, chunk_size);
 fail:
 	page_cache_release(page);
+	return err;
+}
+
+struct lkfs_dir_entry_2 *lkfs_find_entry (struct inode * dir,
+			struct qstr *child, struct page ** res_page)
+{
+	const char *name = child->name;
+	int namelen = child->len;
+	unsigned reclen = LKFS_DIR_REC_LEN(namelen);
+	unsigned long start, n;
+	unsigned long npages = dir_pages(dir);
+	struct page *page = NULL;
+	struct lkfs_dir_entry_2 * de;
+	int dir_has_error = 0;
+
+	if (npages == 0)
+		goto out;
+
+	/* OFFSET_CACHE */
+	*res_page = NULL;
+
+	start = 0;
+	n = start;
+	do {
+		char *kaddr;
+		page = lkfs_get_page(dir, n, dir_has_error);
+		if (!IS_ERR(page)) {
+			kaddr = page_address(page);
+			de = (struct lkfs_dir_entry_2 *) kaddr;
+			kaddr += lkfs_last_byte(dir, n) - reclen;
+			while ((char *) de <= kaddr) {
+				if (de->rec_len == 0) {
+					lkfs_debug("zero-length directory entry");
+					lkfs_put_page(page);
+					goto out;
+				}
+				if (lkfs_match (namelen, name, de)) {
+					lkfs_debug("find\n");
+					goto found;
+				}	
+				de = lkfs_next_entry(de);
+			}
+			lkfs_put_page(page);
+		} else
+			dir_has_error = 1;
+
+		if (++n >= npages)
+			n = 0;
+		/* next page is past the blocks we've got */
+		if (unlikely(n > (dir->i_blocks >> (PAGE_CACHE_SHIFT - 9)))) {
+			lkfs_debug("dir %lu size %lld exceeds block count %llu",
+				dir->i_ino, dir->i_size,
+				(unsigned long long)dir->i_blocks);
+			goto out;
+		}
+	} while (n != start);
+out:
+	return NULL;
+
+found:
+	*res_page = page;
+	/*ei->i_dir_start_lookup = n;*/
+	return de;
+}
+
+int lkfs_delete_entry (struct lkfs_dir_entry_2 * dir, struct page * page )
+{
+	struct address_space *mapping = page->mapping;
+	struct inode *inode = mapping->host;
+	char *kaddr = page_address(page);
+	unsigned from = ((char*)dir - kaddr) & ~(lkfs_chunk_size(inode)-1); 
+	/* & (~(2^10 -1)) */
+	unsigned to = ((char *)dir - kaddr) + (dir->rec_len);
+	loff_t pos;
+	struct lkfs_dir_entry_2 * pde = NULL;
+	struct lkfs_dir_entry_2 * de = (struct lkfs_dir_entry_2 *) (kaddr + from);
+	int err;
+
+	lkfs_debug("from:0x%x, to:0x%x, dir:0x%x, de:0x%x\n",
+			from, to, (int)dir, (int)de);
+
+	while ((char*)de < (char*)dir) {
+		if (de->rec_len == 0) {
+			lkfs_debug("zero-length directory entry");
+			err = -EIO;
+			goto out;
+		}
+		pde = de;
+		de = lkfs_next_entry(de);
+	}
+	if (pde)
+		from = (char*)pde - (char*)page_address(page);
+	pos = page_offset(page) + from;
+	lock_page(page);
+	err = __lkfs_write_begin(NULL, page->mapping, pos, to - from, 0,
+							&page, NULL);
+	BUG_ON(err);
+	if (pde)
+		pde->rec_len = (to - from);
+	dir->inode = 0;
+	err = lkfs_commit_chunk(page, pos, to - from);
+	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
+	/* EXT2_I(inode)->i_flags &= ~EXT2_BTREE_FL; */
+	mark_inode_dirty(inode);
+	lkfs_sync_inode(inode);
+out:
+	lkfs_put_page(page);
 	return err;
 }
 

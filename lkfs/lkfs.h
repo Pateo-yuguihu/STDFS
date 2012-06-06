@@ -147,6 +147,7 @@ int lkfs_write_inode (struct inode *, struct writeback_control *);
 int lkfs_sync_inode (struct inode *);
 int lkfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create);
 int lkfs_setattr (struct dentry *, struct iattr *);
+void lkfs_delete_inode (struct inode * inode);
 
 /*lkfs/file.c*/
 extern const struct file_operations lkfs_file_operations;
@@ -164,6 +165,9 @@ int lkfs_make_empty(struct inode *inode, struct inode *parent);
 int __lkfs_write_begin(struct file *file, struct address_space *mapping,
 		loff_t pos, unsigned len, unsigned flags,
 		struct page **pagep, void **fsdata);
+struct lkfs_dir_entry_2 *lkfs_find_entry (struct inode * dir,
+			struct qstr *child, struct page ** res_page);
+int lkfs_delete_entry (struct lkfs_dir_entry_2 * dir, struct page * page );
 
 /*lkfs/ialloc.c*/
 struct inode *lkfs_new_inode(struct inode *dir, int mode);

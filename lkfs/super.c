@@ -130,6 +130,7 @@ static void lkfs_put_super (struct super_block * sb)
 static const struct super_operations lkfs_sops = {
 	.alloc_inode	= lkfs_alloc_inode,
 	.destroy_inode	= lkfs_destroy_inode,
+	.delete_inode   = lkfs_delete_inode,
 	.write_inode	= lkfs_write_inode,
 	.put_super		= lkfs_put_super,
 	.write_super	= lkfs_write_super,
