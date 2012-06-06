@@ -43,7 +43,9 @@ enum {
 struct lkfs_inode_info {
 	__le32	i_data[LKFS_N_BLOCKS];
 	struct inode	vfs_inode;
+	int i_state;
 };
+#define LKFS_STATE_NEW			0x00000001 /* inode is newly created */
 
 /*
  * Structure of an inode on the disk
@@ -171,4 +173,6 @@ int lkfs_delete_entry (struct lkfs_dir_entry_2 * dir, struct page * page );
 
 /*lkfs/ialloc.c*/
 struct inode *lkfs_new_inode(struct inode *dir, int mode);
+void lkfs_free_inode (struct inode * inode);
+
 #endif

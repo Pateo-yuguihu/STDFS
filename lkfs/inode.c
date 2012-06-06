@@ -188,8 +188,8 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 
 	/* For fields not not tracking in the in-memory inode,
 	 * initialise them to zero for new inodes. */
-	//if (ei->i_state & EXT2_STATE_NEW)
-	memset(raw_inode, 0, 128);
+	if (ei->i_state & LKFS_STATE_NEW)
+		memset(raw_inode, 0, 128);
 
 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
 
@@ -214,6 +214,8 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 			sb->s_id, (unsigned long) ino);
 		err = -EIO;
 	}
+
+	ei->i_state  = 0;
 	brelse (bh);
 	return err;
 }
@@ -284,6 +286,34 @@ bad_inode:
 	return ERR_PTR(ret);
 }
 
+void lkfs_free_block(struct inode *inode, int offset, int iblock)
+{
+	struct super_block *sb = inode->i_sb;
+	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
+	
+	lkfs_debug("offset:%d, block:%d\n", offset, iblock);
+
+	test_and_clear_bit(iblock, (unsigned long *)es->blockbitmap);
+	es->s_free_blocks_count++;
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
+	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
+	LKFS_I(inode)->i_data[offset] = 0;
+}
+
+static void __lkfs_truncate_blocks(struct inode *inode, loff_t offset)
+{
+	int nblocks = (inode->i_size + 1023) >> 10;
+	int i = 0;
+
+	lkfs_debug("nblocks :%d\n", nblocks);
+	for (i = 0; i < nblocks; i++) {
+		if (LKFS_I(inode)->i_data[i] != 0)
+			lkfs_free_block(inode, i, LKFS_I(inode)->i_data[i]);
+		else
+			lkfs_debug("lkfs error: block number:%d\n", LKFS_I(inode)->i_data[i]);
+	}
+}
+
 void lkfs_delete_inode (struct inode * inode)
 {
 	if (!is_bad_inode(inode))
@@ -296,13 +326,12 @@ void lkfs_delete_inode (struct inode * inode)
 	mark_inode_dirty(inode);
 	__lkfs_write_inode(inode, inode_needs_sync(inode));
 
-	inode->i_size = 0;
+	/* inode->i_size = 0; */
 	lkfs_debug("iput\n");
-	/* if (inode->i_blocks)
-		ext2_truncate_blocks(inode, 0);
-	ext2_free_inode (inode);
-	*/
-	clear_inode (inode);
+	if (inode->i_size)
+		__lkfs_truncate_blocks(inode, 0);
+	inode->i_size = 0;
+	lkfs_free_inode (inode);
 	
 	return;
 no_delete:

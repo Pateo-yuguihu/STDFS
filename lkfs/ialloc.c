@@ -41,6 +41,7 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	sb->s_dirt = 1;
 	inode_init_owner(inode, dir, mode);
 
+	LKFS_I(inode)->i_state = LKFS_STATE_NEW;
 	inode->i_ino = ino;
 	inode->i_blocks = 0;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
@@ -62,5 +63,24 @@ fail_drop:
 	iput(inode);
 	return ERR_PTR(err);
 
+}
+
+void lkfs_free_inode (struct inode * inode)
+{
+	struct super_block * sb = inode->i_sb;
+	unsigned long ino;
+	struct lkfs_super_block * es;
+
+	ino = inode->i_ino;
+	lkfs_debug ("freeing inode %lu\n", ino);
+
+	es = LKFS_SB(sb)->s_es;
+
+	/* Do this BEFORE marking the inode not in use or returning an error */
+	clear_inode (inode);
+
+	test_and_clear_bit(ino, (unsigned long *)es->inodebitmap);
+	es->s_free_inodes_count++;
+	sync_dirty_buffer(LKFS_SB(sb)->s_sbh);
 }
 
