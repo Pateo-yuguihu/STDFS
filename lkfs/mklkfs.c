@@ -7,6 +7,15 @@
 * 
 * Disk struct:
 * [boot block 0 ][super block 1][inode table block 2 .. 33][data block 34 .. 1023]
+*
+* (V2)
+* [boot block0][super block1][blockbitmap n ][inodebitmap n/4] [inodetable bitmap] [data blocks...]
+*
+* blocksize =1024
+* disksize = 64MiB
+* block bitmap count = 64MiB/1024/8/1024= disksize/8M = 8(blocks)
+* inode bitmap count = disksize /32M =2(blocks)
+* inode table block count = 2 * 1024 *128 /1024 = 256(blocks)
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,11 +32,15 @@
 #include <errno.h>
 #include <time.h>
 #include "mklkfs.h"
+
 #define LKFS_BLOCK_SIZE 1024
+char *block_bitmap;
+char *inode_bitmap;
+
 /*
 * Function to create new directory block template.
 */
-char *create_new_dir_block_template(ushort pinode, ushort cinode)
+char *create_new_dir_block_template(int pinode, int cinode)
 {
 	static char buf[1024];
 	struct lkfs_dir_entry_2 *dir_entry;
@@ -74,7 +87,7 @@ int close_device(register int fd)
 	return 0;
 }
 
-int write_block(register int fd, ushort blkno, const void *blk_buf)
+int write_block(int fd, int blkno, const void *blk_buf)
 {
 	const char *this = "write_block:";
 	off_t noffset = 0;
@@ -100,7 +113,7 @@ int write_block(register int fd, ushort blkno, const void *blk_buf)
 	return 0;
 }
 
-int read_block(register int fd, ushort blkno, void *blk_buf)
+int read_block(register int fd, int blkno, void *blk_buf)
 {
 	const char *this = "read_block:";
 	off_t noffset = 0;
@@ -126,7 +139,33 @@ int read_block(register int fd, ushort blkno, void *blk_buf)
 	return 0;
 }
 
-int set_bit(ushort bit_nr, void *addr)
+int nwrite_block(int fd, int blkno, const void *blk_buf, int blocknr)
+{
+	const char *this = "nwrite_block:";
+	off_t noffset = 0;
+	ssize_t wrote = 0;
+
+	if (lseek(fd, (off_t) 0, SEEK_SET) != 0) {
+		printf("\n%s 'lseek' error: %s.", this, strerror(errno));
+		return -1;
+	}
+
+	noffset = blkno * LKFS_BLOCK_SIZE;
+	if (lseek(fd, noffset, SEEK_SET) != noffset) {
+		printf("\n%s 'lseek' error: %s.", this, strerror(errno));
+		return -1;
+	}
+
+	wrote = write(fd, blk_buf, LKFS_BLOCK_SIZE * blocknr);
+	if (wrote != LKFS_BLOCK_SIZE * blocknr) {
+		printf("\n%s 'write' error: %s.", this, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+int set_bit(int bit_nr, void *addr)
 {
 	int mask, retval;
 	unsigned char *ADDR = (unsigned char *)addr;
@@ -139,7 +178,7 @@ int set_bit(ushort bit_nr, void *addr)
 	return retval;
 }
 
-int clear_bit(ushort bit_nr, void *addr)
+int clear_bit(int bit_nr, void *addr)
 {
 	int mask, retval;
 	unsigned char *ADDR = (unsigned char *)addr;
@@ -155,8 +194,8 @@ int clear_bit(ushort bit_nr, void *addr)
 /*
 * Function to write root inode
 */
-int write_inode(register int fd, struct lkfs_super_block *sb,
-		ushort ino, struct lkfs_inode *inode)
+int write_inode(int fd, struct lkfs_super_block *sb,
+		int ino, struct lkfs_inode *inode)
 {
 	const char *this = "write_inode:";
 	char blk_buf[LKFS_BLOCK_SIZE];
@@ -166,9 +205,12 @@ int write_inode(register int fd, struct lkfs_super_block *sb,
 
 	ptr = (char *)(blk_buf + (LKFS_ROOT_INO - 1)* LKFS_INODE_SIZE);
 	memcpy((struct lkfs_inode *)ptr, inode, LKFS_INODE_SIZE);
-
-	if (write_block(fd, 2, &blk_buf) < 0) {
-		printf("\n%s Error while writing the block %d.", this, 2);
+	
+	printf("%s, %d\n", __func__, 2 + sb->s_block_bitmap_count + sb->s_inode_bitmap_count);
+	
+	if (write_block(fd, 2 + sb->s_block_bitmap_count + sb->s_inode_bitmap_count, blk_buf) < 0) {
+		printf("\n%s Error while writing the block %d.", this,
+			2 + sb->s_block_bitmap_count + sb->s_inode_bitmap_count);
 		return -1;
 	}
 
@@ -178,7 +220,7 @@ int write_inode(register int fd, struct lkfs_super_block *sb,
 /*
 * Function to create '/' directory
 */
-int create_root_directory(register int fd, struct lkfs_super_block *sb)
+int create_root_directory(int fd, struct lkfs_super_block *sb)
 {
 	const char *this = "create_root_directory:";
 	struct lkfs_inode pinode;
@@ -197,10 +239,11 @@ int create_root_directory(register int fd, struct lkfs_super_block *sb)
 	pinode.i_links_count = 2;
 	pinode.i_size = LKFS_BLOCK_SIZE;
 	pinode.i_blocks = LKFS_BLOCK_SIZE / 512;
-	pinode.i_block[0] = 34;
+	pinode.i_block[0] = 2 + sb->s_block_bitmap_count + sb->s_inode_bitmap_count + sb->s_inode_table_count;
 
+	printf("%s, %d\n", __func__, pinode.i_block[0]);
 	/* write root dir */
-	if (write_block(fd, 34, blk_ptr) < 0) {
+	if (write_block(fd, pinode.i_block[0], blk_ptr) < 0) {
 		printf("\n%s Error while writing the block %d.", this, 34);
 		return -1;
 	}
@@ -209,41 +252,88 @@ int create_root_directory(register int fd, struct lkfs_super_block *sb)
 	if (write_inode(fd, sb, LKFS_ROOT_INO, &pinode) < 0) {
 		printf("\n%s Error while writing the inode %d.", this, LKFS_ROOT_INO);
 		return -1;
-	}
-	sb->s_free_blocks_count -= 35;
-	sb->s_free_inodes_count -= 10;
+	} 
 	return 0;
 }
+
+enum {
+	BLOCK_BITMAP = 0,
+	INODE_BITMAP = 1
+};
 
 /*
 * Core function that actually creates the filesystem.
 */
-int create_lkfs(const char *device, ushort total_blocks)
+int create_lkfs(const char *device, int total_blocks)
 {
 	struct lkfs_super_block sb;
-	register int rc = 0, fd = 0;
+	int rc = 0, fd = 0;
 	char blk_buf[LKFS_BLOCK_SIZE];
-
+	char filesystem_name[32] = "Luck V2 file system";
+	
 	if ((fd = open_device(device, O_RDWR)) < 0) {
 		printf("\nError while opening the device %s.", device);
 		return -1;
 	}
 
 	memset(&sb, 0, sizeof(struct lkfs_super_block));
+	
 	sb.s_blocks_count = total_blocks;
-	sb.s_magic = 0x8309;
-	strncpy(sb.s_volume_name, "LK file system", 14);
-	sb.s_free_blocks_count = total_blocks;
-	sb.s_free_inodes_count = total_blocks / 4;
-	/* set block bitmap */
-	int i = 0;
-	for (i = 0; i < 35; i++) {
-		set_bit(i, sb.blockbitmap); /* mark block used */
-	}
+	sb.s_inodes_count = (sb.s_blocks_count + 3) >> 2;
+	sb.s_magic = LKFS_SUPER_MAGIC;
+	sb.s_block_size = LKFS_BLOCK_SIZE;
+	sb.s_inode_size = LKFS_INODE_SIZE;
+	sb.s_block_bitmap_count = (sb.s_blocks_count + 8191) >> 13;
+	sb.s_inode_bitmap_count = (sb.s_inodes_count + 8191) >> 13;
+	sb.s_inode_table_count = (sb.s_inode_bitmap_count  + 7) >> 3;
 
-	for (i = 0; i < 11; i++) { /* mark inode used */
-		set_bit(i, sb.inodebitmap);
+	sb.s_free_blocks_count =
+		total_blocks - sb.s_block_bitmap_count - sb.s_inode_bitmap_count - sb.s_inode_table_count - 2 - 1;
+	/* bootblock + superblock + blockbitmap + inodebitmap + inode table  + rootdir */
+	sb.s_free_inodes_count = sb.s_inodes_count - 11;
+
+	printf("filesystem name:%s\n"
+			"s_blocks_count: %d\n"
+			"s_inodes_count:%d\n"
+			"s_magic:0x%x\n"
+			"s_block_size:%d\n"
+			"s_inode_size:%d\n"
+			"s_block_bitmap_count:%d\n"
+			"s_inode_bitmap_count:%d\n"
+			"s_inode_table_count:%d\n"
+			"s_free_blocks_count:%d\n"
+			"s_free_inodes_count:%d\n",
+			filesystem_name,
+			sb.s_blocks_count,
+			sb.s_inodes_count,
+			sb.s_magic,
+			sb.s_block_size,
+			sb.s_inode_size,
+			sb.s_block_bitmap_count,
+			sb.s_inode_bitmap_count,
+			sb.s_inode_table_count,
+			sb.s_free_blocks_count,
+			sb.s_free_inodes_count);
+	
+	strncpy(sb.s_volume_name, filesystem_name, strlen(filesystem_name));
+	
+	int i = 0;
+	/* clear block bitmap */
+	block_bitmap = (char *)malloc(sb.s_block_bitmap_count * 1024);
+	memset(block_bitmap, 0, sb.s_block_bitmap_count * 1024);
+	for (i = 0; i < (sb.s_blocks_count - sb.s_free_blocks_count); i++) {
+		set_bit(i, block_bitmap); /* mark block used */
 	}
+	nwrite_block(fd, 2, block_bitmap, sb.s_block_bitmap_count);
+
+	/* clear inode bitmap */
+	inode_bitmap = (char *)malloc(sb.s_inode_bitmap_count * 1024);
+	memset(inode_bitmap, 0, sb.s_inode_bitmap_count * 1024);
+	
+	for (i = 0; i < 11; i++) {
+		set_bit(i, inode_bitmap); /* mark block used */
+	}
+	nwrite_block(fd, 2 + sb.s_block_bitmap_count, inode_bitmap, sb.s_inode_bitmap_count);
 	
 	create_root_directory(fd, &sb);
 	memset(blk_buf, 0, LKFS_BLOCK_SIZE);
@@ -263,9 +353,46 @@ int create_lkfs(const char *device, ushort total_blocks)
 
 int main(int argc, char *argv[])
 {
-	ulong tb = 0;
-	
-	if (create_lkfs(argv[1], (ushort) 1024) != 0)
+	int blockcount = 0;
+	struct stat sb;
+
+	if (stat(argv[1], &sb) == -1) {
+		perror("stat");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("File type:");
+	switch (sb.st_mode & S_IFMT) {
+		case S_IFBLK:
+			printf("block device\n");
+			break;
+		case S_IFCHR:
+			printf("character device\n");
+			break;
+		case S_IFDIR:
+			printf("directory\n");
+			break;
+		case S_IFIFO:
+			printf("FIFO/pipe\n");
+			break;
+		case S_IFLNK:
+			printf("symlink\n");
+			break;
+		case S_IFREG:
+			printf("regular file\n");
+			break;
+		case S_IFSOCK:
+			printf("socket\n");
+			break;
+		default:
+			printf("unknown?\n");
+			break;
+	}
+	blockcount = sb.st_size >> 10;
+	printf("File size:%lld bytes, block numbers:%d\n",
+		(long long) sb.st_size, blockcount);
+
+	if (create_lkfs(argv[1], blockcount) != 0)
 		goto error_exit;
 
 	exit(0);

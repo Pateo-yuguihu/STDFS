@@ -70,29 +70,25 @@ struct lkfs_inode {
 #define LKFS_UNDEL_DIR_INO	 6	/* Undelete directory inode */
 #define LKFS_GOOD_OLD_FIRST_INO	11
 
-
 /*
  * Structure of the super block
  */
 struct lkfs_super_block {
-	__le32	s_inodes_count;		/* Inodes count */
-	__le32	s_blocks_count;		/* Blocks count */
+	__le32	s_inodes_count;			/* Inodes count */
+	__le32	s_blocks_count;			/* Blocks count */
 	__le32	s_free_blocks_count;	/* Free blocks count */
 	__le32	s_free_inodes_count;	/* Free inodes count */
-	__le32	s_log_block_size;	/* Block size */
-	__le32	s_mtime;		/* Mount time */
-	__le32	s_wtime;		/* Write time */
+	__le32	s_block_bitmap_count;
+	__le32	s_inode_bitmap_count;
+	__le32	s_inode_table_count;
+	__le32	s_mtime;			/* Mount time */
+	__le32	s_wtime;			/* Write time */
 	__le16	s_mnt_count;		/* Mount count */
-	__le16	s_max_mnt_count;	/* Maximal mount count */
-	__le16	s_magic;		/* Magic signature */
-	__le16	s_state;		/* File system state */
+	__le16	s_magic;			/* Magic signature */
+	__le16	s_state;			/* File system state */
 	__le32	s_first_ino; 		/* First non-reserved inode */
-	__le16   s_inode_size; 		/* size of inode structure */
-	__u8	s_uuid[16];		/* 128-bit uuid for volume */
-	char	s_volume_name[16]; 	/* volume name */
-	char blockbitmap[128];	/* block bitmap: 8 * 128 = 1024 */
-	char inodebitmap[32];  /* inode bitmap : 8 * 32 = 256 */
+	__le16	s_inode_size; 		/* size of inode structure */
+	__le16	s_block_size;		/* size of block */
+	char	s_volume_name[32]; 	/* volume name */
 };
-
-
 #endif
