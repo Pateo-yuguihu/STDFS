@@ -186,7 +186,7 @@ got_it:
 	
 	err = lkfs_commit_chunk(page, pos, rec_len);
 	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-	dir->i_nlink++;
+	/* dir->i_nlink++; */ /* don't need inc nlink number when create a file */
 	mark_inode_dirty(dir);
 	/* OFFSET_CACHE */
 out_put:

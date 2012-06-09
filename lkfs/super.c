@@ -109,6 +109,8 @@ void lkfs_write_super(struct super_block *sb)
 static void lkfs_put_super (struct super_block * sb)
 {
 	struct lkfs_sb_info *sbi = LKFS_SB(sb);
+	struct lkfs_super_block *es = sbi->s_es;
+	int i;
 
 	if (sb->s_dirt)
 		lkfs_write_super(sb);
@@ -116,7 +118,13 @@ static void lkfs_put_super (struct super_block * sb)
 	if (!(sb->s_flags & MS_RDONLY)) {
 		lkfs_sync_super(sb, 1);
 	}
+	
+	for (i = 0; i < es->s_block_bitmap_count; i++)
+		brelse(sbi->s_sbb[i]);
 
+	for (i = 0; i < es->s_inode_bitmap_count; i++)
+		brelse(sbi->s_sib[i]);
+	
 	brelse (sbi->s_sbh);
 	sb->s_fs_info = NULL;
 	kfree(sbi);
@@ -200,7 +208,7 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 
 	sbi->s_sib = kzalloc(es->s_inode_bitmap_count * sizeof(struct buffer_head *), GFP_KERNEL);
 	/*get inode bitmap */
-	for (i = 0; i < es->s_block_bitmap_count; i++) {
+	for (i = 0; i < es->s_inode_bitmap_count; i++) {
 		if(!(sbi->s_sib[i] = sb_bread(sb, sbi->inode_bitmap_offset + i))) {
 			lkfs_debug("Can not get inode bitmap\n");
 			goto failed_mount;
@@ -217,7 +225,7 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 	if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
 		iput(root);
 		lkfs_debug("error: corrupt root inode, run lkfsck\n");
-		goto failed_mount;
+		goto failed_mount2;
 	}
 
 	sb->s_root = d_alloc_root(root);
@@ -225,9 +233,15 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 		iput(root);
 		lkfs_debug("error: get root inode failed\n");
 		ret = -ENOMEM;
-		goto failed_mount;
+		goto failed_mount2;
 	}
 	return 0;
+failed_mount2:
+	for (i = 0; i < es->s_block_bitmap_count; i++)
+		brelse(sbi->s_sbb[i]);
+
+	for (i = 0; i < es->s_inode_bitmap_count; i++)
+		brelse(sbi->s_sib[i]);
 
 cantfind_lkfs:
 	lkfs_debug("error: can't find an lkfs filesystem on dev %s.\n", sb->s_id);

@@ -131,7 +131,7 @@ struct lkfs_sb_info {
  */
 #ifdef LKFS_DEBUG
 #define lkfs_debug(f, a...)	do { \
-						printk ("LKFS-fs(%s,%d,%s)", __FILE__, __LINE__, __func__); \
+						printk ("LKFS-fs(%d,%s)", __LINE__, __func__); \
 				  		printk (f, ## a); \
 					} while(0)
 #else

@@ -11,7 +11,7 @@
 #include <asm-generic/bitops/le.h>
 #include "lkfs.h"
 
-static int lkfs_new_blocks(struct inode *inode, sector_t iblock)
+static int lkfs_new_blocks(struct inode *inode)
 {
 	int block_no;
 	struct super_block *sb = inode->i_sb;
@@ -27,10 +27,10 @@ static int lkfs_new_blocks(struct inode *inode, sector_t iblock)
 
 	if ((i * LKFS_BLOCKS_PER_BITMAP + block_no) > es->s_blocks_count)  {
 		lkfs_debug("can't find free blocks\n");
-		return -1;
+		return 0;
 		
-	} else
-		lkfs_debug("find free block number:%d\n", block_no + i * LKFS_BLOCKS_PER_BITMAP);
+	} /* else
+		lkfs_debug("find free block number:%d\n", block_no + i * LKFS_BLOCKS_PER_BITMAP); */
 	
 	generic___test_and_set_le_bit(block_no, (unsigned long *)sbi->s_sbb[i]->b_data);
 	es->s_free_blocks_count--;
@@ -40,9 +40,45 @@ static int lkfs_new_blocks(struct inode *inode, sector_t iblock)
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[i]);
 	sync_dirty_buffer(LKFS_SB(sb)->s_sbb[i]); /* sync super block */
 
-	LKFS_I(inode)->i_data[iblock] = block_no + LKFS_BLOCKS_PER_BITMAP * i;
+	/* LKFS_I(inode)->i_data[iblock] = block_no + LKFS_BLOCKS_PER_BITMAP * i; */
 	
-	return block_no;
+	return block_no + LKFS_BLOCKS_PER_BITMAP * i;
+}
+
+static int lkfs_new_ind_blocks(struct inode *inode, struct buffer_head *bh, sector_t iblock)
+{
+	int block_no;
+	struct super_block *sb = inode->i_sb;
+	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
+	struct lkfs_sb_info * sbi = LKFS_SB(sb);
+	int i = 0;
+	
+	for (i = 0; i < es->s_block_bitmap_count; i++) {
+		block_no = generic_find_next_zero_le_bit((unsigned long *)sbi->s_sbb[i]->b_data, LKFS_BLOCKS_PER_BITMAP, 0);
+		if(block_no != LKFS_BLOCKS_PER_BITMAP)
+			break;
+	}
+
+	if ((i * LKFS_BLOCKS_PER_BITMAP + block_no) > es->s_blocks_count)  {
+		lkfs_debug("can't find free blocks\n");
+		return 0;
+		
+	} /* else
+		lkfs_debug("find free ind block number:%d\n", block_no + i * LKFS_BLOCKS_PER_BITMAP); */
+	
+	generic___test_and_set_le_bit(block_no, (unsigned long *)sbi->s_sbb[i]->b_data);
+	es->s_free_blocks_count--;
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
+	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
+
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[i]);
+	sync_dirty_buffer(LKFS_SB(sb)->s_sbb[i]); /* sync super block */
+
+	*(int *)(bh->b_data + (iblock << 2)) = block_no + LKFS_BLOCKS_PER_BITMAP * i;
+	mark_buffer_dirty(bh);
+	sync_dirty_buffer(bh);
+	
+	return block_no + LKFS_BLOCKS_PER_BITMAP * i;
 }
 
 static int lkfs_get_blocks(struct inode *inode,
@@ -50,18 +86,139 @@ static int lkfs_get_blocks(struct inode *inode,
 			   struct buffer_head *bh_result,
 			   int create)
 {
-	if (create == 0) {
-		lkfs_debug("read blocks\n");
-	} else
-		lkfs_debug("write blocks\n");
+	int offsets[3] = {0}, n = 0;
+	int new_block = 0, indblock = 0, dindblock = 0, find_block;
+	struct buffer_head *bh, *dind_bh;
+	struct lkfs_inode_info *lkfs_inode = LKFS_I(inode);
+	/*
+	if (create == 0)
+		lkfs_debug("read blocks:%d\n", (int)iblock);
+	else
+		lkfs_debug("write blocks:%d\n", (int)iblock);
+	*/
+	if (iblock < 0) {
+		lkfs_debug("warning:block < 0");
+	} else if (iblock < LKFS_NDIR_BLOCKS) {
+		offsets[n++] = iblock;
+
+		if (lkfs_inode->i_data[iblock] != 0)
+			map_bh(bh_result, inode->i_sb, lkfs_inode->i_data[iblock]);
+		else {
+			new_block = lkfs_new_blocks(inode);
+			if (!new_block) {
+				lkfs_debug("can't get a new block\n");
+				return -1;
+			}
+			lkfs_inode->i_data[iblock] = new_block;
+			map_bh(bh_result, inode->i_sb, lkfs_inode->i_data[iblock]);
+		}
+
+	} else if ( (iblock -= LKFS_NDIR_BLOCKS) < 256) { /* 256 = 1024 / 4 */
+		offsets[n++] = LKFS_IND_BLOCK;
+		offsets[n++] = iblock;
+		
+		if (lkfs_inode->i_data[LKFS_IND_BLOCK] != 0) {
+			bh = sb_bread(inode->i_sb, lkfs_inode->i_data[LKFS_IND_BLOCK]);
+			indblock = *(int *)(bh->b_data + (iblock << 2));
+			
+			if (indblock != 0) {
+				map_bh(bh_result, inode->i_sb, indblock);
+			} else {
+				/* lkfs_debug("offset[1] %d, b_data:0x%x, 0x%x, numer:%d\n",
+					(int)offsets[1], (int)bh->b_data, (int)(bh->b_data + iblock*4),
+					(int)(bh->b_data + iblock *4 - bh->b_data)); */
+				find_block = lkfs_new_ind_blocks(inode, bh, offsets[1]);
+				map_bh(bh_result, inode->i_sb, find_block);
+			}	
+		} else {
+			new_block = lkfs_new_blocks(inode);
+			lkfs_inode->i_data[LKFS_IND_BLOCK] = new_block;
+			bh = sb_bread(inode->i_sb, lkfs_inode->i_data[LKFS_IND_BLOCK]);
+			memset(bh->b_data, 0, inode->i_sb->s_blocksize);
+			find_block = lkfs_new_ind_blocks(inode, bh, offsets[1]);
+			map_bh(bh_result, inode->i_sb, find_block);
+		}
+		
+	} else if ((iblock -= 256) < 65536) { /* 256 ^2 */
+		offsets[n++] = LKFS_DIND_BLOCK;
+		offsets[n++] = iblock >> 8;
+		offsets[n++] = iblock & 0xff;
+
+		if (lkfs_inode->i_data[LKFS_DIND_BLOCK] != 0) {
+			bh = sb_bread(inode->i_sb, lkfs_inode->i_data[LKFS_DIND_BLOCK]);
+			indblock = *(int *)(bh->b_data + (offsets[1] << 2));
+			if (indblock != 0) {
+				dind_bh = sb_bread(inode->i_sb, indblock);
+				
+				dindblock = *(sector_t *)(dind_bh->b_data + (offsets[2] << 2));
+				if (dindblock != 0) {
+					map_bh(bh_result, inode->i_sb, dindblock);
+				} else {
+					/*                                                                new_block          indblock
+					lkfs_inode->i_data[LKFS_DIND_BLOCK]  --> |--------|        |--------|        ***data block
+				                                                                	  |              | --> |              |        {    }
+				                                                                	  | indblock |        | dinblock  | --> {    }
+				                                                                   	        ...                  ...
+				                                                               	  |              |        |              |        {    }
+				                                                                	  ----------         ---------
+					NOTE: *** is block which need create
+					*/
+					find_block = lkfs_new_ind_blocks(inode, dind_bh, offsets[2]);
+					map_bh(bh_result, inode->i_sb, find_block);
+				}	
+					
+			} else {
+				/*                                                                new_block         ***indblock
+				lkfs_inode->i_data[LKFS_DIND_BLOCK]  --> |--------|        |--------|        ***data block
+				                                                                 |              | --> |              |        {    }
+				                                                                 | indblock |        | dinblock  | --> {    }
+				                                                                        ...                  ...
+				                                                                 |              |        |              |        {    }
+				                                                                 ----------         ---------
+				NOTE: *** is block which need create
+				*/
+
+				indblock = lkfs_new_ind_blocks(inode, bh, offsets[1]);
+				dind_bh = sb_bread(inode->i_sb, indblock);
+				memset(dind_bh->b_data, 0, inode->i_sb->s_blocksize);
+				dindblock = lkfs_new_ind_blocks(inode, dind_bh, offsets[2]);
+
+				map_bh(bh_result, inode->i_sb, dindblock);
+			}	
+			
+		} else {
+			/*                                                                     ***new_block    ***indblock
+				lkfs_inode->i_data[LKFS_DIND_BLOCK]  --> |--------|        |--------|     ***data block
+				                                                                 |              | --> |              |        {    }
+				                                                                 | indblock |        | dinblock  | --> {    }
+				                                                                        ...                  ...
+				                                                                 |              |        |              |        {    }
+				                                                                 ----------         ---------
+			NOTE: *** is block which need create
+			*/
+			new_block = lkfs_new_blocks(inode);
+			lkfs_inode->i_data[LKFS_DIND_BLOCK] = new_block;
+
+			bh = sb_bread(inode->i_sb, new_block);
+			memset(bh->b_data, 0, inode->i_sb->s_blocksize);
+			indblock = lkfs_new_ind_blocks(inode, bh, offsets[1]);
+
+			dind_bh = sb_bread(inode->i_sb, indblock);
+			memset(dind_bh->b_data, 0, inode->i_sb->s_blocksize);
+			dindblock = lkfs_new_ind_blocks(inode, dind_bh, offsets[2]);
+			
+			map_bh(bh_result, inode->i_sb, dindblock);
+		}
+	} else {
+		lkfs_debug("block is too big\n");
+	}
+
+	if (!bh)
+		brelse(bh);
+
+	if(!dind_bh)
+		brelse(dind_bh);
 	
-	if (LKFS_I(inode)->i_data[iblock] != 0)
-		map_bh(bh_result, inode->i_sb, LKFS_I(inode)->i_data[iblock]);
-	else {
-		if (!lkfs_new_blocks(inode, iblock))
-			lkfs_debug("can't get a new block\n");
-		map_bh(bh_result, inode->i_sb, LKFS_I(inode)->i_data[iblock]);
-	}	
 	return 1;
 }
 
@@ -200,7 +357,7 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 	struct lkfs_inode * raw_inode = lkfs_get_inode(sb, ino, &bh);
 	int n;
 	int err = 0;
-	lkfs_debug("inode:%ld\n", inode->i_ino);
+	/* lkfs_debug("inode:%ld\n", inode->i_ino); */
 	if (IS_ERR(raw_inode))
  		return -EIO;
 
@@ -227,6 +384,7 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 	mark_buffer_dirty(bh);
 	
 	sync_dirty_buffer(bh);
+	/* lkfs_debug("sync dirty buffer\n"); */
 	if (buffer_req(bh) && !buffer_uptodate(bh)) {
 		lkfs_debug("IO error syncing lkfs inode [%s:%08lx]\n",
 			sb->s_id, (unsigned long) ino);
