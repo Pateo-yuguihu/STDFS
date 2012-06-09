@@ -71,6 +71,9 @@ struct lkfs_inode {
 #define LKFS_INODE_PER_SB_BIT 3
 #define LKFS_INODE_PER_SB 8
 #define LKFS_INODE_SIZE 128
+#define LKFS_BLOCKS_PER_BITMAP 8192
+#define LKFS_INODES_PER_BITMAP 8192
+
 /*
  * Special inode numbers
  */
@@ -84,31 +87,35 @@ struct lkfs_inode {
 /*
  * Structure of the super block
  */
-struct lkfs_super_block {
-	__le32	s_inodes_count;		/* Inodes count */
-	__le32	s_blocks_count;		/* Blocks count */
-	__le32	s_free_blocks_count;	/* Free blocks count */
-	__le32	s_free_inodes_count;	/* Free inodes count */
-	__le32	s_log_block_size;	/* Block size */
-	__le32	s_mtime;		/* Mount time */
-	__le32	s_wtime;		/* Write time */
-	__le16	s_mnt_count;		/* Mount count */
-	__le16	s_max_mnt_count;	/* Maximal mount count */
-	__le16	s_magic;		/* Magic signature */
-	__le16	s_state;		/* File system state */
-	__le32	s_first_ino; 		/* First non-reserved inode */
-	__le16   s_inode_size; 		/* size of inode structure */
-	__u8	s_uuid[16];		/* 128-bit uuid for volume */
-	char	s_volume_name[16]; 	/* volume name */
-	char blockbitmap[128];	/* block bitmap: 8 * 128 = 1024 */
-	char inodebitmap[32];  /* inode bitmap : 8 * 32 = 256 */
-};
+	struct lkfs_super_block {
+		__le32	s_inodes_count; 		/* Inodes count */
+		__le32	s_blocks_count; 		/* Blocks count */
+		__le32	s_free_blocks_count;	/* Free blocks count */
+		__le32	s_free_inodes_count;	/* Free inodes count */
+		__le32	s_block_bitmap_count;
+		__le32	s_inode_bitmap_count;
+		__le32	s_inode_table_count;
+		__le32	s_mtime;			/* Mount time */
+		__le32	s_wtime;			/* Write time */
+		__le16	s_mnt_count;		/* Mount count */
+		__le16	s_magic;			/* Magic signature */
+		__le16	s_state;			/* File system state */
+		__le32	s_first_ino;		/* First non-reserved inode */
+		__le16	s_inode_size;		/* size of inode structure */
+		__le16	s_block_size;		/* size of block */
+		char	s_volume_name[32];	/* volume name */
+	};
 
 /*
  * lkfs-fs super-block data in memory
  */
 struct lkfs_sb_info {
 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+	struct buffer_head **s_sbb; /* buffer containing the block bitmap */
+	struct buffer_head **s_sib; /* buffer containing the inode bitmap */
+	int block_bitmap_offset;
+	int inode_bitmap_offset;
+	int inode_table_offset;
 	struct lkfs_super_block * s_es;	/* Pointer to the super block in the buffer */
 	int s_inode_size;
 };

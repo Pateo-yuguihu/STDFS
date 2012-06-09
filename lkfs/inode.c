@@ -16,14 +16,31 @@ static int lkfs_new_blocks(struct inode *inode, sector_t iblock)
 	int block_no;
 	struct super_block *sb = inode->i_sb;
 	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
+	struct lkfs_sb_info * sbi = LKFS_SB(sb);
+	int i = 0;
 	
-	block_no = generic_find_next_zero_le_bit((unsigned long *)es->blockbitmap, 1024, 34);
-	lkfs_debug("find free block number:%d\n", block_no);
-	generic___test_and_set_le_bit(block_no, (unsigned long *)es->blockbitmap);
+	for (i = 0; i < es->s_block_bitmap_count; i++) {
+		block_no = generic_find_next_zero_le_bit((unsigned long *)sbi->s_sbb[i]->b_data, LKFS_BLOCKS_PER_BITMAP, 0);
+		if(block_no != LKFS_BLOCKS_PER_BITMAP)
+			break;
+	}
+
+	if ((i * LKFS_BLOCKS_PER_BITMAP + block_no) > es->s_blocks_count)  {
+		lkfs_debug("can't find free blocks\n");
+		return -1;
+		
+	} else
+		lkfs_debug("find free block number:%d\n", block_no + i * LKFS_BLOCKS_PER_BITMAP);
+	
+	generic___test_and_set_le_bit(block_no, (unsigned long *)sbi->s_sbb[i]->b_data);
 	es->s_free_blocks_count--;
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
 	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
-	LKFS_I(inode)->i_data[iblock] = block_no;
+
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[i]);
+	sync_dirty_buffer(LKFS_SB(sb)->s_sbb[i]); /* sync super block */
+
+	LKFS_I(inode)->i_data[iblock] = block_no + LKFS_BLOCKS_PER_BITMAP * i;
 	
 	return block_no;
 }
@@ -153,10 +170,11 @@ static struct lkfs_inode *lkfs_get_inode(struct super_block *sb, ino_t ino,
 	struct buffer_head * bh;
 	unsigned long block;
 	unsigned long offset;
+	struct lkfs_sb_info *sbi = LKFS_SB(sb);
 
-	block = ((ino - 1) >> LKFS_INODE_PER_SB_BIT) + 2;
+	block = ((ino - 1) >> LKFS_INODE_PER_SB_BIT) + sbi->inode_table_offset;
 	offset = ((ino - 1) % LKFS_INODE_PER_SB) * LKFS_INODE_SIZE;
-	
+	lkfs_debug("block: %ld, offset:%ld\n", block, offset);
 	if (!(bh = sb_bread(sb, block)))
 		goto Eio;
 
@@ -290,13 +308,17 @@ void lkfs_free_block(struct inode *inode, int offset, int iblock)
 {
 	struct super_block *sb = inode->i_sb;
 	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
-	
+	int block, nr;
 	lkfs_debug("offset:%d, block:%d\n", offset, iblock);
 
-	test_and_clear_bit(iblock, (unsigned long *)es->blockbitmap);
+	block = iblock >> 10;
+	nr = iblock & (sb->s_blocksize - 1);
+	
+	test_and_clear_bit(nr, (unsigned long *)LKFS_SB(sb)->s_sbb[block]->b_data);
 	es->s_free_blocks_count++;
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
 	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
+	sync_dirty_buffer(LKFS_SB(sb)->s_sbb[block]); 
 	LKFS_I(inode)->i_data[offset] = 0;
 }
 

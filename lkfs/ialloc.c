@@ -19,7 +19,8 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	struct lkfs_inode_info *ei;
 	struct lkfs_sb_info *sbi;
 	int err;
-
+	int i = 0;
+	
 	sb = dir->i_sb;
 	inode = new_inode(sb);
 	if (!inode)
@@ -28,16 +29,23 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	ei = LKFS_I(inode);
 	sbi = LKFS_SB(sb);
 	es = sbi->s_es;
-
-	ino = generic_find_next_zero_le_bit((unsigned long *)es->inodebitmap, 256, dir->i_ino);
-	lkfs_debug("find free inode number:%ld\n", ino);
-	generic___test_and_set_le_bit(ino, (unsigned long *)es->inodebitmap);
-
+	
+	for (i = 0; i < es->s_inode_bitmap_count; i++) {
+		ino = find_next_zero_bit((unsigned long *)sbi->s_sib[i]->b_data, LKFS_INODES_PER_BITMAP, 0);
+		if (ino != LKFS_INODES_PER_BITMAP) {
+			lkfs_debug("i:%d, ino:%ld\n", i, ino);
+			break;
+		}
+	}
+	if ((i * LKFS_INODES_PER_BITMAP + ino) >= es->s_inodes_count)
+		goto fail_drop;
+	
+	generic___test_and_set_le_bit(ino, (unsigned long *)sbi->s_sib[i]->b_data);
 	
 	mark_buffer_dirty(sbi->s_sbh);
 	sync_dirty_buffer(sbi->s_sbh);
 
-	ino += 1;
+	ino = i * LKFS_INODES_PER_BITMAP + ino;
 	sb->s_dirt = 1;
 	inode_init_owner(inode, dir, mode);
 
@@ -54,6 +62,8 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	}
 	
 	mark_inode_dirty(inode);
+	mark_buffer_dirty(sbi->s_sib[i]);
+	sync_dirty_buffer(sbi->s_sib[i]); /* sync inode bitmap buffer */
 	return inode;
 
 fail_drop:
@@ -70,17 +80,22 @@ void lkfs_free_inode (struct inode * inode)
 	struct super_block * sb = inode->i_sb;
 	unsigned long ino;
 	struct lkfs_super_block * es;
+	int block, offset;
 
 	ino = inode->i_ino;
 	lkfs_debug ("freeing inode %lu\n", ino);
+
+	block = ino >> 10;
+	offset = ino & (sb->s_blocksize - 1);
 
 	es = LKFS_SB(sb)->s_es;
 
 	/* Do this BEFORE marking the inode not in use or returning an error */
 	clear_inode (inode);
 
-	test_and_clear_bit(ino, (unsigned long *)es->inodebitmap);
+	test_and_clear_bit(offset, (unsigned long *)LKFS_SB(sb)->s_sib[block]->b_data);
 	es->s_free_inodes_count++;
 	sync_dirty_buffer(LKFS_SB(sb)->s_sbh);
+	sync_dirty_buffer(LKFS_SB(sb)->s_sib[block]);
 }
 

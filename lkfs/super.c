@@ -79,7 +79,6 @@ static int lkfs_statfs (struct dentry * dentry, struct kstatfs * buf)
 	struct super_block *sb = dentry->d_sb;
 	struct lkfs_sb_info *sbi = LKFS_SB(sb);
 	struct lkfs_super_block *es = sbi->s_es;
-	u64 fsid;
 
 	buf->f_type = LKFS_SUPER_MAGIC;
 	buf->f_bsize = sb->s_blocksize;
@@ -90,10 +89,7 @@ static int lkfs_statfs (struct dentry * dentry, struct kstatfs * buf)
 	buf->f_files = le32_to_cpu(es->s_inodes_count);
 	buf->f_ffree = le32_to_cpu(es->s_free_inodes_count );
 	buf->f_namelen = LKFS_NAME_LEN;
-	fsid = le64_to_cpup((void *)es->s_uuid) ^
-	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
-	buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
-	buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
+
 	return 0;
 }
 
@@ -148,6 +144,7 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 	unsigned long offset = 0;
 	long ret = -EINVAL;
 	int blocksize = BLOCK_SIZE;
+	int i = 0;
 
 	sbi = kzalloc(sizeof(struct lkfs_sb_info), GFP_KERNEL);
 	if (!sbi)
@@ -173,15 +170,43 @@ static int lkfs_fill_super(struct super_block *sb, void *data, int silent)
 	if (sb->s_magic != LKFS_SUPER_MAGIC)
 		goto cantfind_lkfs;
 
-	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
-	sbi->s_inode_size = LKFS_GOOD_OLD_INODE_SIZE;
-	sb->s_maxbytes = 8192 << 10;
+	
+	sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
+	sb->s_maxbytes = es->s_free_blocks_count << BLOCK_SIZE_BITS;
 
 	if (sb->s_blocksize != bh->b_size) {
 			lkfs_debug("error: unsupported blocksize\n");
 		goto failed_mount;
-	}
+	} else
+		lkfs_debug("block size:%ld\n", sb->s_blocksize);
 
+	sbi->block_bitmap_offset = 2; /* bootblock + superblock */
+	sbi->inode_bitmap_offset = sbi->block_bitmap_offset + es->s_block_bitmap_count;
+	sbi->inode_table_offset = sbi->inode_bitmap_offset + es->s_inode_bitmap_count;
+
+	lkfs_debug("bb_off: %d, ib_off: %d, it_off: %d\n",
+		sbi->block_bitmap_offset,
+		sbi->inode_bitmap_offset,
+		sbi->inode_table_offset);
+	
+	sbi->s_sbb = kzalloc(es->s_block_bitmap_count * sizeof(struct buffer_head *), GFP_KERNEL);
+	/*get block bitmap */
+	for (i = 0; i < es->s_block_bitmap_count; i++) {
+		if(!(sbi->s_sbb[i] = sb_bread(sb, sbi->block_bitmap_offset + i))) {
+			lkfs_debug("Can not get block bitmap\n");
+			goto failed_mount;
+		}
+	}	
+
+	sbi->s_sib = kzalloc(es->s_inode_bitmap_count * sizeof(struct buffer_head *), GFP_KERNEL);
+	/*get inode bitmap */
+	for (i = 0; i < es->s_block_bitmap_count; i++) {
+		if(!(sbi->s_sib[i] = sb_bread(sb, sbi->inode_bitmap_offset + i))) {
+			lkfs_debug("Can not get inode bitmap\n");
+			goto failed_mount;
+		}
+	}
+	
 	sb->s_op = &lkfs_sops;
 
 	root = lkfs_iget(sb, LKFS_ROOT_INO);
@@ -224,7 +249,7 @@ static int lkfs_get_sb(struct file_system_type *fs_type,
 
 static struct file_system_type lkfs_fs_type = {
 	.owner		= THIS_MODULE,
-	.name		= "lkfs",
+	.name		= "lkfs2",
 	.get_sb		= lkfs_get_sb,
 	.kill_sb	= kill_block_super,
 	.fs_flags	= FS_REQUIRES_DEV,
