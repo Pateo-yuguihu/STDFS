@@ -377,7 +377,10 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 	raw_inode->i_ctime = cpu_to_le32(inode->i_ctime.tv_sec);
 	raw_inode->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
 
-	raw_inode->i_blocks = cpu_to_le32(inode->i_blocks);
+	raw_inode->i_blocks = (cpu_to_le32(inode->i_size) + 511) >> 9;
+	inode->i_blocks = (cpu_to_le32(inode->i_size) + 511) >> 9;
+
+	lkfs_debug("%d, inode->i_blocks : %d\n", inode->i_ino, inode->i_blocks);
 
 	for (n = 0; n < LKFS_N_BLOCKS; n++)
 		raw_inode->i_block[n] = ei->i_data[n];
@@ -434,7 +437,11 @@ struct inode *lkfs_iget (struct super_block *sb, unsigned long ino)
 	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
 	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
 
-	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
+	if (inode->i_ino == 2)
+		inode->i_blocks = (1024) >> 9;
+	else
+		inode->i_blocks = (le32_to_cpu(inode->i_size)  + 511) >> 9;
+	printk("%d, inode->i_blocks : %d\n", inode->i_ino, inode->i_blocks);
 
 	/*
 	 * NOTE! The in-memory inode i_data array is in little-endian order

@@ -54,23 +54,21 @@ find:
 
 static struct dentry *lkfs_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
 {
-	struct inode *inode;
-	struct lkfs_dir_entry_2 *de;
-	struct buffer_head *bh;
+	lkfs_debug("pinode:%ld, dentry name: %s\n", dir->i_ino, dentry->d_name.name);
 
-	//lkfs_debug("pinode:%ld, dentry name: %s\n", dir->i_ino, dentry->d_name.name);
+	struct inode * inode;
+	ino_t ino;
+	
 	if (dentry->d_name.len > LKFS_NAME_LEN)
 		return ERR_PTR(-ENAMETOOLONG);
 
-	bh = stfs_find_entry(dir, &dentry->d_name, &de);
-	
+	ino = lkfs_inode_by_name(dir, &dentry->d_name);
 	inode = NULL;
-	if (bh) {
-		__u32 ino = le32_to_cpu(de->inode);
-		brelse(bh);
+	if (ino) {
 		inode = lkfs_iget(dir->i_sb, ino);
 		if (unlikely(IS_ERR(inode))) {
 			if (PTR_ERR(inode) == -ESTALE) {
+				lkfs_debug("deleted inode referenced: %lu", (unsigned long) ino);
 				return ERR_PTR(-EIO);
 			} else {
 				return ERR_CAST(inode);

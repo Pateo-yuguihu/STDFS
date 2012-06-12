@@ -27,7 +27,7 @@ static struct page * lkfs_get_page(struct inode *dir, unsigned long n,
 	struct address_space *mapping = dir->i_mapping;
 	struct page *page = read_mapping_page(mapping, n, NULL);
 	if (!IS_ERR(page)) {
-
+		kmap(page);
 	}
 	return page;
 }
@@ -302,6 +302,21 @@ found:
 	return de;
 }
 
+ino_t lkfs_inode_by_name(struct inode *dir, struct qstr *child)
+{
+	ino_t res = 0;
+	struct lkfs_dir_entry_2 *de;
+	struct page *page;
+	
+	de = lkfs_find_entry (dir, child, &page);
+	if (de) {
+		res = le32_to_cpu(de->inode);
+		lkfs_put_page(page);
+	}
+	return res;
+}
+
+
 int lkfs_delete_entry (struct lkfs_dir_entry_2 * dir, struct page * page )
 {
 	struct address_space *mapping = page->mapping;
@@ -354,10 +369,10 @@ static int lkfs_readdir (struct file * filp, void * dirent, filldir_t filldir)
 	unsigned int offset = pos & ~PAGE_CACHE_MASK;
 	unsigned long n = pos >> PAGE_CACHE_SHIFT;
 	unsigned long npages = dir_pages(inode);
-
-	if (pos > inode->i_size - LKFS_DIR_REC_LEN(1))
+	lkfs_debug("ino:%ld, size: %lld\n", inode->i_ino, inode->i_size);
+	/* if (pos > inode->i_size - LKFS_DIR_REC_LEN(1))
 		return 0;
-
+	*/
 	for ( ; n < npages; n++, offset = 0) {
 		char *kaddr, *limit;
 		struct lkfs_dir_entry_2 *de;
@@ -376,7 +391,7 @@ static int lkfs_readdir (struct file * filp, void * dirent, filldir_t filldir)
 			if (de->inode) {
 				int over;
 				unsigned char d_type = DT_UNKNOWN;
-
+				lkfs_debug("de->name, de->name_len: %d\n", de->name, de->name_len);
 				offset = (char *)de - kaddr;
 				over = filldir(dirent, de->name, de->name_len,
 						(n<<PAGE_CACHE_SHIFT) | offset,

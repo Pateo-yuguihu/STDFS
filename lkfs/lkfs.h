@@ -177,6 +177,7 @@ int __lkfs_write_begin(struct file *file, struct address_space *mapping,
 struct lkfs_dir_entry_2 *lkfs_find_entry (struct inode * dir,
 			struct qstr *child, struct page ** res_page);
 int lkfs_delete_entry (struct lkfs_dir_entry_2 * dir, struct page * page );
+ino_t lkfs_inode_by_name(struct inode *dir, struct qstr *child);
 
 /*lkfs/ialloc.c*/
 struct inode *lkfs_new_inode(struct inode *dir, int mode);
