@@ -285,7 +285,7 @@ int create_lkfs(const char *device, int total_blocks)
 	sb.s_inode_size = LKFS_INODE_SIZE;
 	sb.s_block_bitmap_count = (sb.s_blocks_count + 8191) >> 13;
 	sb.s_inode_bitmap_count = (sb.s_inodes_count + 8191) >> 13;
-	sb.s_inode_table_count = (sb.s_inode_bitmap_count  + 7) >> 3;
+	sb.s_inode_table_count = (sb.s_inodes_count  + 7) >> 3;
 
 	sb.s_free_blocks_count =
 		total_blocks - sb.s_block_bitmap_count - sb.s_inode_bitmap_count - sb.s_inode_table_count - 2 - 1;
