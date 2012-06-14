@@ -43,7 +43,7 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	generic___test_and_set_le_bit(ino, (unsigned long *)sbi->s_sib[i]->b_data);
 	
 	mark_buffer_dirty(sbi->s_sbh);
-	sync_dirty_buffer(sbi->s_sbh);
+	//sync_dirty_buffer(sbi->s_sbh);
 
 	ino = i * LKFS_INODES_PER_BITMAP + ino;
 	sb->s_dirt = 1;
@@ -63,7 +63,7 @@ struct inode *lkfs_new_inode(struct inode *dir, int mode)
 	
 	mark_inode_dirty(inode);
 	mark_buffer_dirty(sbi->s_sib[i]);
-	sync_dirty_buffer(sbi->s_sib[i]); /* sync inode bitmap buffer */
+	//sync_dirty_buffer(sbi->s_sib[i]); /* sync inode bitmap buffer */
 	return inode;
 
 fail_drop:
@@ -95,7 +95,7 @@ void lkfs_free_inode (struct inode * inode)
 
 	test_and_clear_bit(offset, (unsigned long *)LKFS_SB(sb)->s_sib[block]->b_data);
 	es->s_free_inodes_count++;
-	sync_dirty_buffer(LKFS_SB(sb)->s_sbh);
-	sync_dirty_buffer(LKFS_SB(sb)->s_sib[block]);
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh);
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sib[block]);
 }
 

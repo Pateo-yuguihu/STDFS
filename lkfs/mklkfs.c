@@ -351,6 +351,30 @@ int create_lkfs(const char *device, int total_blocks)
 	return 0;
 }
 
+long get_total_device_blocks(const char *device)
+{
+	const char *this = "get_total_device_blocks:";
+	register int fd = 0;
+	ulong size = 0, res = 0;
+
+	if ((fd = open(device, O_RDONLY)) < 0) {
+		//print_emsg("\n%s 'open' error: %s.", this, strerror(errno));
+		return 0;
+	}
+
+	if (ioctl(fd, BLKGETSIZE, &size) < 0) {
+		close(fd);
+		//print_emsg("\n%s 'ioctl' error: %s.", this, strerror(errno));
+		return 0;
+	}
+
+	close(fd);
+	res = (long) (size >> 1);
+	printf("size: %ld, block:%ld\n", size, size >> 1);
+
+	return res;
+}
+
 int main(int argc, char *argv[])
 {
 	int blockcount = 0;
@@ -364,7 +388,9 @@ int main(int argc, char *argv[])
 	printf("File type:");
 	switch (sb.st_mode & S_IFMT) {
 		case S_IFBLK:
+			blockcount = get_total_device_blocks(argv[1]);
 			printf("block device\n");
+			goto createlkfs;
 			break;
 		case S_IFCHR:
 			printf("character device\n");
@@ -391,7 +417,7 @@ int main(int argc, char *argv[])
 	blockcount = sb.st_size >> 10;
 	printf("File size:%lld bytes, block numbers:%d\n",
 		(long long) sb.st_size, blockcount);
-
+createlkfs:
 	if (create_lkfs(argv[1], blockcount) != 0)
 		goto error_exit;
 

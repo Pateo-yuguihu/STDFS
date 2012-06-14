@@ -35,10 +35,10 @@ static int lkfs_new_blocks(struct inode *inode)
 	generic___test_and_set_le_bit(block_no, (unsigned long *)sbi->s_sbb[i]->b_data);
 	es->s_free_blocks_count--;
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
-	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
 
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[i]);
-	sync_dirty_buffer(LKFS_SB(sb)->s_sbb[i]); /* sync super block */
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sbb[i]); /* sync super block */
 
 	/* LKFS_I(inode)->i_data[iblock] = block_no + LKFS_BLOCKS_PER_BITMAP * i; */
 	
@@ -69,14 +69,14 @@ static int lkfs_new_ind_blocks(struct inode *inode, struct buffer_head *bh, sect
 	generic___test_and_set_le_bit(block_no, (unsigned long *)sbi->s_sbb[i]->b_data);
 	es->s_free_blocks_count--;
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
-	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
 
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[i]);
-	sync_dirty_buffer(LKFS_SB(sb)->s_sbb[i]); /* sync super block */
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sbb[i]); /* sync super block */
 
 	*(int *)(bh->b_data + (iblock << 2)) = block_no + LKFS_BLOCKS_PER_BITMAP * i;
 	mark_buffer_dirty(bh);
-	sync_dirty_buffer(bh);
+	//sync_dirty_buffer(bh);
 	
 	return block_no + LKFS_BLOCKS_PER_BITMAP * i;
 }
@@ -376,7 +376,7 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 		raw_inode->i_block[n] = ei->i_data[n];
 	mark_buffer_dirty(bh);
 	
-	sync_dirty_buffer(bh);
+	//sync_dirty_buffer(bh);
 	/* lkfs_debug("sync dirty buffer\n"); */
 	if (buffer_req(bh) && !buffer_uptodate(bh)) {
 		lkfs_debug("IO error syncing lkfs inode [%s:%08lx]\n",
@@ -471,8 +471,8 @@ void lkfs_free_block(struct inode *inode, int offset, int iblock)
 	test_and_clear_bit(nr, (unsigned long *)LKFS_SB(sb)->s_sbb[block]->b_data);
 	es->s_free_blocks_count++;
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
-	sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
-	sync_dirty_buffer(LKFS_SB(sb)->s_sbb[block]); 
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
+	//sync_dirty_buffer(LKFS_SB(sb)->s_sbb[block]); 
 	LKFS_I(inode)->i_data[offset] = 0;
 }
 
