@@ -13,7 +13,7 @@
 
 static int lkfs_new_blocks(struct inode *inode)
 {
-	int block_no;
+	int block_no = 0;
 	struct super_block *sb = inode->i_sb;
 	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
 	struct lkfs_sb_info * sbi = LKFS_SB(sb);
@@ -47,7 +47,7 @@ static int lkfs_new_blocks(struct inode *inode)
 
 static int lkfs_new_ind_blocks(struct inode *inode, struct buffer_head *bh, sector_t iblock)
 {
-	int block_no;
+	int block_no = 0;
 	struct super_block *sb = inode->i_sb;
 	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
 	struct lkfs_sb_info * sbi = LKFS_SB(sb);
@@ -90,12 +90,7 @@ static int lkfs_get_blocks(struct inode *inode,
 	int new_block = 0, indblock = 0, dindblock = 0, find_block;
 	struct buffer_head *bh, *dind_bh;
 	struct lkfs_inode_info *lkfs_inode = LKFS_I(inode);
-	/*
-	if (create == 0)
-		lkfs_debug("read blocks:%d\n", (int)iblock);
-	else
-		lkfs_debug("write blocks:%d\n", (int)iblock);
-	*/
+
 	if (iblock < 0) {
 		lkfs_debug("warning:block < 0");
 	} else if (iblock < LKFS_NDIR_BLOCKS) {
@@ -124,9 +119,6 @@ static int lkfs_get_blocks(struct inode *inode,
 			if (indblock != 0) {
 				map_bh(bh_result, inode->i_sb, indblock);
 			} else {
-				/* lkfs_debug("offset[1] %d, b_data:0x%x, 0x%x, numer:%d\n",
-					(int)offsets[1], (int)bh->b_data, (int)(bh->b_data + iblock*4),
-					(int)(bh->b_data + iblock *4 - bh->b_data)); */
 				find_block = lkfs_new_ind_blocks(inode, bh, offsets[1]);
 				map_bh(bh_result, inode->i_sb, find_block);
 			}	
@@ -357,7 +349,7 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 	struct lkfs_inode * raw_inode = lkfs_get_inode(sb, ino, &bh);
 	int n;
 	int err = 0;
-	/* lkfs_debug("inode:%ld\n", inode->i_ino); */
+
 	if (IS_ERR(raw_inode))
  		return -EIO;
 
@@ -379,8 +371,6 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 
 	raw_inode->i_blocks = (cpu_to_le32(inode->i_size) + 511) >> 9;
 	inode->i_blocks = (cpu_to_le32(inode->i_size) + 511) >> 9;
-
-	lkfs_debug("%d, inode->i_blocks : %d\n", inode->i_ino, inode->i_blocks);
 
 	for (n = 0; n < LKFS_N_BLOCKS; n++)
 		raw_inode->i_block[n] = ei->i_data[n];
@@ -441,7 +431,6 @@ struct inode *lkfs_iget (struct super_block *sb, unsigned long ino)
 		inode->i_blocks = (1024) >> 9;
 	else
 		inode->i_blocks = (le32_to_cpu(inode->i_size)  + 511) >> 9;
-	printk("%d, inode->i_blocks : %d\n", inode->i_ino, inode->i_blocks);
 
 	/*
 	 * NOTE! The in-memory inode i_data array is in little-endian order

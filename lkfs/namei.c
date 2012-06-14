@@ -19,43 +19,8 @@
 #include <asm/uaccess.h>
 #include "lkfs.h"
 
-static struct buffer_head * stfs_find_entry (struct inode *dir,
-					const struct qstr *d_name,
-					struct lkfs_dir_entry_2 ** res_dir)
-{
-	struct buffer_head *bh = NULL;
-	struct lkfs_dir_entry_2 * dentry;
-
-	int offset = 0;
-	int max = (dir->i_size + 1024 - 1) >> 10;
-	int d_off = 0;
-
-	while(offset < max) {
-		bh = sb_bread(dir->i_sb, LKFS_I(dir)->i_data[offset]);
-
-		d_off = 0;
-		while(d_off < (1024 - 12)) {
-			dentry = (struct lkfs_dir_entry_2 *)(bh->b_data + d_off);
-			if ((dentry->name_len == d_name->len)
-				&& (strncmp(d_name->name, dentry->name, d_name->len) == 0)) {
-				*res_dir = dentry;
-				goto find;
-			}
-			d_off += dentry->rec_len;
-		}
-		offset++;
-	}
-	brelse(bh);
-	return NULL;  /* no find */
-
-find:
-	return bh;
-}
-
 static struct dentry *lkfs_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
 {
-	lkfs_debug("pinode:%ld, dentry name: %s\n", dir->i_ino, dentry->d_name.name);
-
 	struct inode * inode;
 	ino_t ino;
 	
@@ -112,25 +77,25 @@ static int lkfs_create (struct inode * dir, struct dentry * dentry, int mode, st
 static int lkfs_mknod (struct inode * dir, struct dentry *dentry, int mode, dev_t rdev)
 {
 	//struct inode * inode;
-	int err;
+	//int err;
 
-	return err;
+	return 0;
 }
 
 static int lkfs_symlink (struct inode * dir, struct dentry * dentry,
 	const char * symname)
 {
-	int err = -ENAMETOOLONG;
-	return err;
+	//int err = -ENAMETOOLONG;
+	return 0;
 }
 
 static int lkfs_link (struct dentry * old_dentry, struct inode * dir,
 	struct dentry *dentry)
 {
 	//struct inode *inode = old_dentry->d_inode;
-	int err;
+	//int err;
 
-	return err;
+	return 0;
 }
 
 static int lkfs_mkdir(struct inode * dir, struct dentry * dentry, int mode)
