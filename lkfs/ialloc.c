@@ -97,5 +97,7 @@ void lkfs_free_inode (struct inode * inode)
 	es->s_free_inodes_count++;
 	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh);
 	//sync_dirty_buffer(LKFS_SB(sb)->s_sib[block]);
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
+	mark_buffer_dirty(LKFS_SB(sb)->s_sib[block]);
 }
 

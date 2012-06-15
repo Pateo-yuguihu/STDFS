@@ -473,6 +473,7 @@ void lkfs_free_block(struct inode *inode, int offset, int iblock)
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
 	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
 	//sync_dirty_buffer(LKFS_SB(sb)->s_sbb[block]); 
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[block]);
 	LKFS_I(inode)->i_data[offset] = 0;
 }
 
