@@ -7,9 +7,6 @@
 #include <linux/pagemap.h>
 #include <linux/swap.h>
 
-/*
- * p is at least 6 bytes before the end of page
- */
 static inline struct lkfs_dir_entry_2 *lkfs_next_entry(struct lkfs_dir_entry_2 *p)
 {
 	return (struct lkfs_dir_entry_2 *)((char *)p + p->rec_len);
@@ -329,9 +326,6 @@ int lkfs_delete_entry (struct lkfs_dir_entry_2 * dir, struct page * page )
 	struct lkfs_dir_entry_2 * de = (struct lkfs_dir_entry_2 *) (kaddr + from);
 	int err;
 
-	lkfs_debug("from:0x%x, to:0x%x, dir:0x%x, de:0x%x\n",
-			from, to, (int)dir, (int)de);
-
 	while ((char*)de < (char*)dir) {
 		if (de->rec_len == 0) {
 			lkfs_debug("zero-length directory entry");
@@ -353,7 +347,7 @@ int lkfs_delete_entry (struct lkfs_dir_entry_2 * dir, struct page * page )
 	dir->inode = 0;
 	err = lkfs_commit_chunk(page, pos, to - from);
 	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-	/* EXT2_I(inode)->i_flags &= ~EXT2_BTREE_FL; */
+
 	mark_inode_dirty(inode);
 	lkfs_sync_inode(inode);
 out:
@@ -393,7 +387,7 @@ static int lkfs_readdir (struct file * filp, void * dirent, filldir_t filldir)
 
 				offset = (char *)de - kaddr;
 				over = filldir(dirent, de->name, de->name_len,
-						(n<<PAGE_CACHE_SHIFT) | offset,
+						(n << PAGE_CACHE_SHIFT) | offset,
 						le32_to_cpu(de->inode), d_type);
 				if (over) {
 					lkfs_put_page(page);

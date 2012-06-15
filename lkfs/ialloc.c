@@ -85,8 +85,8 @@ void lkfs_free_inode (struct inode * inode)
 	ino = inode->i_ino;
 	lkfs_debug ("freeing inode %lu\n", ino);
 
-	block = ino >> 10;
-	offset = ino & (sb->s_blocksize - 1);
+	block = ino >> LKFS_BITS_PER_BLOCKS;
+	offset = ino & (LKFS_INODES_PER_BITMAP - 1);
 
 	es = LKFS_SB(sb)->s_es;
 
@@ -95,8 +95,6 @@ void lkfs_free_inode (struct inode * inode)
 
 	test_and_clear_bit(offset, (unsigned long *)LKFS_SB(sb)->s_sib[block]->b_data);
 	es->s_free_inodes_count++;
-	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh);
-	//sync_dirty_buffer(LKFS_SB(sb)->s_sib[block]);
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
 	mark_buffer_dirty(LKFS_SB(sb)->s_sib[block]);
 }

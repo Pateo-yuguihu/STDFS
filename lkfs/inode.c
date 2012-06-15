@@ -323,7 +323,7 @@ static struct lkfs_inode *lkfs_get_inode(struct super_block *sb, ino_t ino,
 
 	block = ((ino - 1) >> LKFS_INODE_PER_SB_BIT) + sbi->inode_table_offset;
 	offset = ((ino - 1) % LKFS_INODE_PER_SB) * LKFS_INODE_SIZE;
-	lkfs_debug("block: %ld, offset:%ld\n", block, offset);
+	 /* lkfs_debug("block: %ld, offset:%ld\n", block, offset); */
 	if (!(bh = sb_bread(sb, block)))
 		goto Eio;
 
@@ -376,8 +376,6 @@ static int __lkfs_write_inode(struct inode *inode, int do_sync)
 		raw_inode->i_block[n] = ei->i_data[n];
 	mark_buffer_dirty(bh);
 	
-	//sync_dirty_buffer(bh);
-	/* lkfs_debug("sync dirty buffer\n"); */
 	if (buffer_req(bh) && !buffer_uptodate(bh)) {
 		lkfs_debug("IO error syncing lkfs inode [%s:%08lx]\n",
 			sb->s_id, (unsigned long) ino);
@@ -463,32 +461,124 @@ void lkfs_free_block(struct inode *inode, int offset, int iblock)
 	struct super_block *sb = inode->i_sb;
 	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
 	int block, nr;
-	lkfs_debug("offset:%d, block:%d\n", offset, iblock);
 
-	block = iblock >> 10;
-	nr = iblock & (sb->s_blocksize - 1);
+	block = iblock >> (LKFS_BITS_PER_BLOCKS);
+	nr = iblock & (LKFS_BLOCKS_PER_BITMAP- 1);
 	
 	test_and_clear_bit(nr, (unsigned long *)LKFS_SB(sb)->s_sbb[block]->b_data);
 	es->s_free_blocks_count++;
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
-	//sync_dirty_buffer(LKFS_SB(sb)->s_sbh); /* sync super block */
-	//sync_dirty_buffer(LKFS_SB(sb)->s_sbb[block]); 
 	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[block]);
 	LKFS_I(inode)->i_data[offset] = 0;
+}
+
+void lkfs_free_meta_block(struct inode *inode, struct buffer_head *bh, int iblock)
+{
+	struct super_block *sb = inode->i_sb;
+	struct lkfs_super_block *es = LKFS_SB(sb)->s_es;
+	int block, nr;
+
+	block = iblock >> (LKFS_BITS_PER_BLOCKS);
+	nr = iblock & (LKFS_BLOCKS_PER_BITMAP- 1);
+	
+	test_and_clear_bit(nr, (unsigned long *)LKFS_SB(sb)->s_sbb[block]->b_data);
+	es->s_free_blocks_count++;
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbh);
+	mark_buffer_dirty(LKFS_SB(sb)->s_sbb[block]);
+}
+
+static void lkfs_free_meta_blocks(struct inode *inode, __u32 blocks, __u32 count, __u32 flag)
+{
+	int i = 0;
+	struct buffer_head *bh;
+	__u32 iblock = 0;
+	
+	bh = sb_bread(inode->i_sb, blocks);
+	
+	for (i = 0; i < count; i++) {
+		iblock = *(__u32 *)(bh->b_data + (i << 2));
+		lkfs_free_meta_block(inode, bh, iblock);
+	}
+	/* memset(bh->b_data, 0, inode->i_sb->s_blocksize);
+	mark_buffer_dirty(bh); */
+	/* free dind_blocks */
+	if (flag == 1)
+		lkfs_free_meta_block(inode, bh, blocks);	
+	brelse(bh);
 }
 
 static void __lkfs_truncate_blocks(struct inode *inode, loff_t offset)
 {
 	int nblocks = (inode->i_size + 1023) >> 10;
 	int i = 0;
+	struct buffer_head *bh;
+	struct super_block *sb = inode->i_sb;
+	__u32 block;
+	__u32 offsets[3], n = 0, freecount = 0;
 
 	lkfs_debug("nblocks :%d\n", nblocks);
-	for (i = 0; i < nblocks; i++) {
-		if (LKFS_I(inode)->i_data[i] != 0)
-			lkfs_free_block(inode, i, LKFS_I(inode)->i_data[i]);
-		else
-			lkfs_debug("lkfs error: block number:%d\n", LKFS_I(inode)->i_data[i]);
+	if (nblocks < LKFS_NDIR_BLOCKS) {
+		
+		for (i = 0; i < nblocks; i++) {
+			freecount++;
+			if (LKFS_I(inode)->i_data[i] != 0)
+				lkfs_free_block(inode, i, LKFS_I(inode)->i_data[i]);
+			else
+				lkfs_debug("lkfs error: double free blocks:%d\n", LKFS_I(inode)->i_data[i]);
+		}
+	} else if ((nblocks -= LKFS_NDIR_BLOCKS) < 256) {
+		/* 1. direct block */
+		for (i = 0; i < LKFS_NDIR_BLOCKS; i++) {
+			freecount++;
+			if (LKFS_I(inode)->i_data[i] != 0)
+				lkfs_free_block(inode, i, LKFS_I(inode)->i_data[i]);
+		}
+		/*2. indirect block */
+		freecount += nblocks;
+		lkfs_free_meta_blocks(inode, LKFS_I(inode)->i_data[LKFS_IND_BLOCK], nblocks, 0);
+		freecount++;
+		lkfs_free_block(inode, LKFS_IND_BLOCK, LKFS_I(inode)->i_data[LKFS_IND_BLOCK]);
+	} else if ((nblocks -= 256) < 65536) { /* 256 ^2 */
+		offsets[n++] = LKFS_DIND_BLOCK;
+		offsets[n++] = nblocks >> 8;
+		offsets[n++] = nblocks & 0xff;
+		lkfs_debug("%d, %d, %d\n", offsets[0], offsets[1], offsets[2]);
+		/* 1. direct blocks */
+		for (i = 0; i < LKFS_NDIR_BLOCKS; i++) {
+			freecount++;
+			if (LKFS_I(inode)->i_data[i] != 0)
+				lkfs_free_block(inode, i, LKFS_I(inode)->i_data[i]);
+		}	
+
+		/*2. indirect blocks */
+		freecount += 256;
+		lkfs_free_meta_blocks(inode, LKFS_I(inode)->i_data[LKFS_IND_BLOCK], 256, 0);
+		freecount += 1;
+		lkfs_free_block(inode, LKFS_IND_BLOCK, LKFS_I(inode)->i_data[LKFS_IND_BLOCK]);
+
+
+		/*3. Dindirect blocks*/
+		bh = sb_bread(sb, LKFS_I(inode)->i_data[LKFS_DIND_BLOCK]);
+		for (i = 0; i < offsets[1]; i++) {
+			freecount += 257;
+			block = *(__u32 *)(bh->b_data + (i << 2));
+			lkfs_free_meta_blocks(inode, block, 256, 1);
+		}
+
+		freecount += (offsets[2] + 1);
+		block = *(__u32 *)(bh->b_data + (i << 2));
+		lkfs_free_meta_blocks(inode, block, offsets[2], 1);
+
+		/* memset(bh->b_data, 0, sb->s_blocksize);
+		mark_buffer_dirty(bh); */
+		freecount += 1;
+		lkfs_free_block(inode, LKFS_DIND_BLOCK, LKFS_I(inode)->i_data[LKFS_DIND_BLOCK]);
+		
 	}
+
+	lkfs_debug("freeblock: %d\n", freecount);
+	if (bh != NULL)
+		brelse(bh);
 }
 
 void lkfs_delete_inode (struct inode * inode)

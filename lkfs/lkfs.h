@@ -73,6 +73,7 @@ struct lkfs_inode {
 #define LKFS_INODE_SIZE 128
 #define LKFS_BLOCKS_PER_BITMAP 8192
 #define LKFS_INODES_PER_BITMAP 8192
+#define LKFS_BITS_PER_BLOCKS 13
 
 /*
  * Special inode numbers
