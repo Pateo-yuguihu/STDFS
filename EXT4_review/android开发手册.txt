@@ -370,4 +370,15 @@ branch
 amixer -c 1 set 'Mic' 6
 amixer -c 1 set 'Auto Gain Control' on
   
+export PATH=$PATH:/cache/bin;opcontrol --init;opcontrol --vmlinux=/sdcard/vmlinux;opcontrol --start
+opcontrol --shutdown;opreport -l --threshold=1
 
+./configure --with-kernel-support --host=arm-none-linux-gnueabi --prefix=$OPDIR/popt/
+make
+make install
+
+./configure --with-kernel-support --host=arm-none-linux-gnueabi --prefix=$OPDIR/binutils
+make LDFLAGS="-static"
+
+./configure --with-kernel-support --host=arm-none-linux-gnueabi --prefix=$OPDIR/oprofile/ --with-extra-libs=$OPDIR/popt/lib/ --with-extra-includes=$OPDIR/popt/include/ --with-binutils=$OPDIR/binutils CFLAGS="-static"
+make LDFLAGS="-all-static -L$OPDIR/binutils/lib -L$OPDIR/popt/lib"
