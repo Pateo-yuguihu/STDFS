@@ -1,0 +1,373 @@
+source build/envsetup.sh;choosecombo Device release roewe_v2 user;make kernel
+
+flash_image Kernel /data/boot.img
+
+logcat -s mountd &
+logcat -s MountListener &
+getprop
+
+/* echo "<sel>;<pid>;<fdnum>;" > /dev/VM-TEST */
+echo "1;84;56;" > /dev/VM-TEST
+echo "2;84;56;rootfs;" > /dev/VM-TEST
+echo "3;84;56;rootfs;" > /dev/VM-TEST
+echo "0;49;56;rootfs;" > /dev/VM-TEST
+
+
+make -C kernel O=$PWD/KERNEL_OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- zImage;mkbootimg --kernel KERNEL_OUT/arch/arm/boot/zImage --ramdisk out/target/product/roewe_v2/ramdisk.img -o ./boot.img;fastboot flash kernel boot.img;fastboot reboot
+
+echo 1 >  /sys/class/sdcard/status/value;cat /sys/class/sdcard/status/value
+echo 0x1 > /dev/VM-TEST
+
+
+rmmod vm_test;insmod /data/vm-test.ko "pid=51 fdnum=15";cat /dev/VM-TEST
+rmmod vm_test;insmod /data/vm-test.ko "pid=902 fdnum=4 ";cat /dev/VM-TEST
+insmod /data/vm-test.ko "pid=51";cat /dev/VM-TEST
+echo 3 > /proc/sys/vm/drop_caches
+echo 1 > /proc/sys/vm/drop_caches ***
+echo 2 > /proc/sys/vm/drop_caches
+rmmod vm_test;insmod /data/vm-test.ko "pid=84";cat /dev/VM-TEST
+rmmod vm_test;insmod /data/vm-test.ko "pid=0 sel=1";cat /dev/VM-TEST
+
+
+
+ 1993  make -C kernel O=$PWD/KERNEL-OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- arch/arm/configs/pxa3xx_android_a1030c_defconfig
+ 1994  make -C kernel O=$PWD/KERNEL-OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- pxa3xx_android_a1030c_defconfig
+ 1995  make -C kernel O=$PWD/KERNEL-OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- menuconfig
+ 1996  make -C kernel O=$PWD/KERNEL-OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- zImage
+ 1997  make -C kernel O=$PWD/KERNEL-OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- modules
+
+1.android编译命令
+(1).make -C ../littleton-kernel O=$PWD/../LITTLETON_OBJ ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- zImage
+(2).mkbootfs out/target/product/roewe_v2/root | minigzip > out/target/product/roewe_v2/ramdisk.img
+(3).mkbootimg --kernel arch/arm/boot/zImage --ramdisk ../out/target/product/roewe_v2/ramdisk.img -o ./boot.img
+(4).fastboot flash kernel ../out/target/product/roewe_v2/boot.img
+(5).fastboot reboot
+
+
+update-alternatives --config java
+2.挂载
+mount -o rw,remount -t yaffs2 /dev/block/mtdblock3 /system
+mount -rw -t vfat -o remount /dev/blockmmcblk1 /sdcard      #重新挂在SDCARD
+
+3.setprop & getprop
+(1).ro.sf.lcd_density=240/160  #UI缩放比例
+(2).ro.allow.mock.location=1
+(3).ro.debuggable=1            #adb shell为root权限
+(4).persist.service.adb.enable=1
+
+4.android busybox[can't access tty; job control turned off]
+(1).Why do I keep getting "sh: can't access tty; job control turned off" errors? Why doesn't Control-C work within my shell?
+This isn't really a uClibc question, but I'll answer it here anyways. Job control will be turned off since your shell can not obtain a controlling terminal. This typically happens when you run your shell on /dev/console. The kernel will not provide a controlling terminal on the /dev/console device. Your should run your shell on a normal tty such as tty1 or ttyS0 and everything will work perfectly. If you REALLY want your shell to run on /dev/console, then you can hack your kernel (if you are into that sortof thing) by changing drivers/char/tty_io.c to change the lines where it sets "noctty = 1;" to instead set it to "0". I recommend you instead run your shell on a real console...
+
+or change /system/core/init/init.c console_name="/dev/console" to "/dev/ttyS*".
+
+(2)rm /system/bin/ls
+busybox ln -s /system/bin/busybox /system/bin/ls
+
+5./root/.kermrc配置
+set line /dev/ttyUSB0
+set speed 115200
+set carrier-watch off 
+set handshake none
+set flow-control none
+robust
+set file type bin 
+set file name lit 
+set rec pack 1000
+set send pack 1000
+set window 5
+log session /tmp/kermit.log append
+c
+
+6.git下载代码
+git clone git://192.168.9.201/pateo/roewe_android.git/tools/repo.git tools/repo.git
+./tools/repo.git/repo init -u git://192.168.9.201/pateo/roewe_android.git/platform/manifest.git -b red_coral
+./tools/repo.git/repo sync
+./tools/repo.git/repo start red_coral --all
+
+使用git生成patch
+git format-patch commit-id
+git am *.patch
+
+7.InKaNet系统激活码
+RoEWe8 
+
+8.How to open/create the android's ramdisk.img
+(1).mv ramdisk.img ramdisk.cpio.gz
+(2).gunzip ramdisk.cpio.gz
+(3).mkdir ramdisk
+(4).cd ramdisk
+(5).cpio -i -F ../ramdisk.cpio
+
+(6)find . |cpio -o -H newc | gzip -9 > ../ramgisk.img
+
+9.shell script
+#!/system/bin/sh
+
+echo "Start to burn the Linux kernel..."
+echo "================================="
+#Get the size of the boot.img
+KERNEL_SIZE=`./busybox ls -l |./busybox awk '{if ($9=="boot.img") print $5}'`
+echo "kernel image size:$KERNEL_SIZE"
+
+ERASE_SIZE=$((($KERNEL_SIZE/131072+1)*131072))
+echo "erase size:$ERASE_SIZE"
+
+./mtd_debug info /dev/mtd/mtd3
+
+echo "<1>.start to erase kernel partition"
+./mtd_debug erase  /dev/mtd/mtd3 0 $ERASE_SIZE
+
+echo "<2>.start to write kernel image to flash"
+./mtd_debug write  /dev/mtd/mtd3 0 $KERNEL_SIZE boot.img
+
+echo "================================="
+echo "Finish!"
+
+10.android keycode define
+framworks/base/include/ui/keycodelabels.h
+    { "SOFT_LEFT", 1 },
+    { "SOFT_RIGHT", 2 },
+    { "HOME", 3 },
+    { "BACK", 4 },
+    { "CALL", 5 },
+    { "ENDCALL", 6 },
+    { "STAR", 17 },
+    { "POUND", 18 },
+    { "DPAD_UP", 19 },
+    { "DPAD_DOWN", 20 },
+    { "DPAD_LEFT", 21 },
+    { "DPAD_RIGHT", 22 },
+    { "DPAD_CENTER", 23 },
+    { "VOLUME_UP", 24 },
+    { "VOLUME_DOWN", 25 },
+    { "POWER", 26 },
+    { "CAMERA", 27 },
+    { "CLEAR", 28 },
+    { "COMMA", 55 },
+    { "PERIOD", 56 },
+    { "ALT_LEFT", 57 },
+    { "ALT_RIGHT", 58 },
+    { "SHIFT_LEFT", 59 },
+    { "SHIFT_RIGHT", 60 },
+    { "TAB", 61 },
+    { "SPACE", 62 },
+    { "SYM", 63 },
+    { "EXPLORER", 64 },
+    { "ENVELOPE", 65 },
+    { "ENTER", 66 },
+    { "DEL", 67 },
+    { "GRAVE", 68 },
+    { "MINUS", 69 },
+    { "EQUALS", 70 },
+    { "LEFT_BRACKET", 71 },
+    { "RIGHT_BRACKET", 72 },
+    { "BACKSLASH", 73 },
+    { "SEMICOLON", 74 },remotes/korg/MB_1030C
+    { "APOSTROPHE", 75 },
+    { "SLASH", 76 },
+    { "AT", 77 },
+    { "NUM", 78 },
+    { "HEADSETHOOK", 79 },
+    { "FOCUS", 80 },
+    { "PLUS", 81 },
+    { "MENU", 82 },
+    { "NOTIFICATION", 83 },
+    { "SEARCH", 84 },
+    { "MEDIA_PLAY_PAUSE", 85 },
+    { "MEDIA_STOP", 86 },
+    { "MEDIA_NEXT", 87 },
+    { "MEDIA_PREVIOUS", 88 },
+    { "MEDIA_REWIND", 89 },
+    { "MEDIA_FAST_FORWARD", 90 },
+    { "MUTE", 91 },
+input keyevent 4;输入BACK按键
+
+11.TSLIB使用
+五点校准：
+int axis_table[] = {54194, 39, -1920576, -719, -36922, 33514374, 16 };  #axis_table[6] = 65536,使用移位是为16
+int sample_x, sample_y;
+tem_x = (axis_table[2] + axis_table[0]*sample_x + axis_table[1]*sample_y) >> axis_table[6];
+tem_y = (axis_table[5] + axis_table[3]*sample_x + axis_table[4]*sample_y) >> axis_table[6];
+tem_x = (tem_x > X_MAX) ? X_MAX : tem_x;
+tem_x = (tem_x < X_MIN) ? X_MIN : tem_x;
+tem_y = (tem_y > Y_MAX) ? Y_MAX : tem_y;
+tem_y = (tem_y < Y_MIN) ? Y_MIN : tem_y;
+
+#/bin/sh
+echo "Compile the TSLIB testsuite."
+arm-none-linux-gnueabi-gcc -static fbutils.c font_8x16.c font_8x8.c ts_calibrate.c -o TSLIB
+echo "OK!"
+[  432.092224] get:WM8976 register 0x6: 0x1e0
+Simple mixer control 'FM1188 Bypass',0
+  Capabilities: pswitch pswitch-joined
+  Playback channels: Mono
+  Mono: Playback [off]
+
+ts_calibrate.c修改：
+put_cross(50, 50, 1);   #后面一个参数为查找颜色表的序号
+put_cross(xres - 50, 50, 1);
+put_cross(50, yres - 50, 1);
+put_cross(xres - 50, yres - 50, 1);
+put_cross(xres/2, yres/2, 1);
+
+12.BC的使用
+echo "ibase=16;3FF" |bc
+echo "scale=3;1/3" |bc
+
+13.find ./ -name *.c |xargs grep -nr --color "read"
+
+14.mkdosfs -F 32 /dev/block/mmcblk0p1 #格式化MMC卡
+
+15.将nand当作U盘
+insmod g_file_storage.ko file=/dev/block/vold/179:0
+
+dd if=/sdcard/map.img of=/dev/block/mmcblk0 bs=4096
+
+# df
+/dev: 126156K total, 0K used, 126156K available (block size 4096)
+/sqlite_stmt_journals: 4096K total, 0K used, 4096K available (block size 4096)
+/system: 98304K total, 89604K used, 8700K a[  432.092224] get:WM8976 register 0x6: 0x1e0
+Simple mixer control 'FM1188 Bypass',0
+  Capabilities: pswitch pswitch-joined
+  Playback channels: Mono
+  Mono: Playback [off]
+vailable (block size 4096)
+/auth: 10240K total, 1628K used, 8612K available (block size 4096)
+/data: 50944K total, 20300K used, 30644K available (block size 4096)
+/cache: 61440K total, 2408K used, 59032K available (block size 4096)
+/sdcard: 3835392K total, 1578926K used, 2256466K available (block size 1024)
+/soft: 627896K total, 40K used, 627856K available (block size 4096)
+/inand: 3139576K total, 1858192K used, 1281384K available (block size 4096)
+
+张瑜  yuzhang 01718  18648  电子工程师  yuzhang@pateo.com.cn 
+郭鹏  pengguo 01727  18633  电子工程师  pengguo@pateo.com.cn 
+
+echo 1 > /sys/class/backlight/pxa3xx_pwm_bl2/brightness
+echo 522 > /sys/class/backlight/pxa3xx_pwm_bl2/brightness
+echo 190 > /sys/class/backlight/pxa3xx_pwm_bl2/brightness
+echo 410 > /sys/class/backlight/pxa3xx_pwm_bl2/brightness
+qq:314755175
+echo 470 > /sys/class/backlight/pxa3xx_pwm_bl2/brightness
+echo 460 > /sys/class/backlight/pxa3xx_pwm_bl2/brightness
+echo 180 > /sys/class/backlight/pxa3xx_pwm_bl2/brightness
+daolongwang@pateo.com.cn
+Pecker.hu@gmail.com's googlecode.com password: Zv9qv6FU8nQ8
+
+#######################################################
+source build/envsetup.sh;choosecombo Device release roewe_v2 user
+#######################################################
+make -C ./  O=../KERNEL_OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- modules
+adb push ../KERNEL_OUT/drivers/char/bmm.ko /system/lib/modules
+########################################################
+git push korg HEAD:refs/for/redcoral_2.4
+git push kernel-repo HEAD:refs/for/redcoral_2.4
+git commit --amend
+
+git cherry-pick commit-id
+git push
+source build/envsetup.sh;choosecombo Device release roewe_v2 user
+m/redcoral_2.4 -> frameworks-repo/project_a1030c
+git push frameworks-repo HEAD:refs/for/project_a1030c
+git checkout -b MB_AP12 kernel-repo/MB_AP12
+
+########################################################
+mount -t vfat -o remount,rw /dev/block/sda /usbdisk
+mount -t vfat -o remount,rw /dev/block/mmcblk1 /sdcard;cd /sdcard;flash_image Kernel A1030_boot.img;reboot
+cd /data;flash_image Kernel boot.img;reboot
+
+cat /proc/interrupts
+./busybox cp libhardware_legacy.so /system/lib/
+
+flash_image Kernel /data/boot.img;reboot
+
+echo "on" > /proc/gps_proc
+echo "off" > /proc/gps_proc
+
+ATStoreProductSN P001000400000004
+ATStoreACTCD ABCD123
+ATStoreSN MB12345566
+
+写PDSN
+B2106H:
+ATStoreProductSN P002000100000001
+
+nanderase -z 0xef40000 1024
+
+make -C ./  O=../KERNEL_OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- pxa3xx_android_a1030_defconfig
+make -C ./  O=../KERNEL_OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- menuconfig
+make -C ./  O=../KERNEL_OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- zImage
+make -C ./  O=../KERNEL_OUT ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- modules
+
+mkbootimg --kernel ../KERNEL_OUT/arch/arm/boot/zImage --ramdisk ../out/target/product/roewe_v2/ramdisk.img -o ../A1030_boot.img
+
+amixer cset iface=MIXER,name='Input PGA Volume' 63
+amixer cget iface=MIXER,name='Input PGA Volume'
+
+echo 8 > /proc/sys/kernel/printk
+
+insmod /data/thread_test.ko
+rmmod thread_test
+
+================ play=====================
+amixer cset name='MIC Enable' off
+amixer cset name='PHONE SWITCH' off
+amixer cset name='LIP Capture LIP Capture Boost S' off
+amixer cset name='LIN Capture LIN Capture Boost S' off
+amixer cset name='Left Mixer Left DAC Playback Sw' on
+amixer cset name='Left Mixer Right DAC Playback S' on
+amixer cset name='Right Mixer Left DAC Playback S' on
+amixer cset name='Right Mixer Right DAC Playback ' on
+amixer cset name='Left DAC Volume' 240
+amixer cset name='Right DAC Volume' 240  
+amixer cset name='Output Volume' 80
+amixer cset name='PA MUTE' off
+amixer cset name='PCM SWITCH' 0
+aplay /system/media/audio/ringtones/boot.wav &
+aplay 16k.wav &
+./arecord -D "USB Audio Device" -f S16_LE -c 2 -r 16000 -d 10 16k1.wav
+
+===================arecord==================
+amixer cset name='MIC Enable' on
+amixer cset name='PHONE SWITCH' off
+amixer cset name='Loopback Switch ADC DAC Loopbac' off
+amixer cset name='LIP Capture LIP Capture Boost S' on
+amixer cset name='LIN Capture LIN Capture Boost S' on
+amixer cset name='Input PGA Volume' 60
+amixer cset name='ADC Volume' 255
+
+arecord -D "default:CARD=Device" -f S16_LE -c 2 -r 16000 -d 10 16k1.wav
+amixer -c 1 set 'Mic' 16
+arecord -f S16_LE -c 2 -r 16000 -d 10 16k.wav
+
+mv /system/bin/aplay /system/bin/arecord
+mv /system/bin/arecord /system/bin/aplay
+arecord -D "default:CARD=Device" -f S16_LE -c 2 -r 16000 -d 10 16k1.wav
+
+cd /sys/class/mmc_host/mmc0/mmc0:aaaa
+amixer cset  iface=MIXER,name='FM2018 Bypass' 1
+amixer cset  iface=MIXER,name='FM2018 Bypass' 0
+
+
+amixer cset name='LOUT1 Speaker Mute' on
+amixer cset name='ROUT1 Spamixer cset  iface=MIXER,name='FM2018 Bypass' 1eaker Mute' on
+
+echo reset > /sys/devices/platform/mu103_driver/state;echo power_on > /sys/devices/platform/mu103_driver/state
+
+input keyevent 105
+
+Zv9qv6FU8nQ8
+
+假定当前在A1030C redcoral_2.4项目中，默认使用的是kernel redcoral_2.4
+branch
+
+1. cd kernel
+2. git branch -a ＃可以查看到本地的分支与远端分支的对应关系
+3. git checkout -b turquoise_3.0 仓库名/turquoise_3.0
+4. git rebase redcoral_2.4 有冲突解决冲突
+
+
+amixer -c 1 set 'Mic' 6
+amixer -c 1 set 'Auto Gain Control' on
+  
+

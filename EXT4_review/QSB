@@ -1,0 +1,71 @@
+/usr/share/stardict/dic
+
+cd /work1/qsb/scripts;./build_android.sh imx53_qsb kernel;cd ../kernel_imx;../out/host/linux-x86/bin/fastboot flash kernel arch/arm/boot/uImage;../out/host/linux-x86/bin/fastboot reboot 
+
+../out/host/linux-x86/bin/fastboot flash  uramdisk
+
+setenv bootargs_android 'setenv bootargs ${bootargs} init=/init androidboot.console=ttymxc0 resume=179:7';saveenv;boot
+setenv bootargs_android 'setenv bootargs ${bootargs} init=/init androidboot.console=ttymxc0';saveenv;boot
+setenv bootargs ${bootargs} init=/init root=/dev/mmcblk0p4 rootfs=ext4
+
+setenv bootargs_android_recovery 'setenv bootargs ${bootargs} init=/init root=/dev/mmcblk0p4 rootfs=ext4 di0_primary' 
+
+mkimage -A arm -O linux -T ramdisk -C none -a 0x70308000 -n "Android Root Filesystem" -d ./ramdisk.img ./uramdisk.img
+run bootcmd_android_recovery
+make PRODUCT-imx53_loco-eng
+
+. build/envsetup.sh;choosecombo 1 1 imx53_loco 3
+
+/work1/qsb/out/host/linux-x86/bin/adb shell
+export TSLIB_FBDEVICE=/dev/graphics/fb0
+
+
+mkfs.ext4 -O ^extent,^has_journal,^flex_bg -L data /dev/sdb5
+
+mount -o remount,rw /dev/block/mmcblk0p2 /system
+
+sync;echo 8 > /proc/sys/vm/drop_caches;  //清楚buffer uptodate flag & release preallocate blocks
+sync;echo 4 > /proc/sys/vm/drop_caches;  //update super block & inodes from disk
+
+;cat /proc/meminfo
+export TSLIB_FBDEVICE=/dev/graphics/fb0
+
+debugfs/dumpe2fs
+
+mount -o remount -rw /dev/block/mmcblk0p2 /system;busybox vi /system/bin/hi.sh
+
+busybox mount -t ext4 -o barrier=0,data=writeback /dev/block/mmcblk0p6 /cache
+
+
+
+testsuite_boot
+main_test -x /system/xml/mmc.xml -l /system/log/keypad.log -d /system/logdmesg.log
+
+
+sbi->s_group_info = kmalloc(array_size, GFP_KERNEL);
+	if (sbi->s_group_info == NULL) {
+		printk(KERN_ERR "EXT4-fs: can't allocate buddy meta group\n");
+		return -ENOMEM;
+	}
+	/* HYG:we need care it, use buddy cache to save meta group data */
+	sbi->s_buddy_cache = new_inode(sb);
+
+dosfsck -v -V -p -w /dev/sdf1
+
+
+mkdir /mnt;mount -o loop -t lkfs2 64M.img /mnt;cd /mnt
+tar jxvf linux-2.6.37.tar.bz2
+cp /boot/config-2.6.32-24-generic .config
+make bzImage
+make modules
+make modules_install
+make install
+
+mkinitramfs 2.6.35.3+ -o /boot/initrd.img-2.6.35.3+-generic
+update-grub2
+
+umount /mnt/;rmmod lkfs;make all;insmod lkfs.ko;mount -o loop -t lkfs2 test.img /mnt
+
+
+mkdir /mnt;mount -o loop -t lkfs2 test.img /mnt
+

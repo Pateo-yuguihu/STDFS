@@ -1,0 +1,44 @@
+1.创建rootfs
+<1>:创建文件夹
+mkdir -v {dev,proc,sys,etc,lib,tmp,bin,sbin,usr}
+mkdir -v usr/include
+mkdir -v usr/lib
+chmod 1777 tmp
+
+<2>:添加两个必要的结点
+sudo mknod -m 600 dev/console c 5 1
+sudo mknod -m 666 dev/null c 1 3
+
+<3>:在/etc/inittab文件中添加
+# System initialization.
+::sysinit:/etc/init.d/rcS
+::askfirst:-/bin/sh
+::ctrlaltdel:/sbin/reboot
+::shutdown:/bin/umount -a -r
+
+<4>:添加mdev支持
+在/etc/init.d/rcS中添加：
+mount -t sysfs sysfs /sys
+mount -t proc none /proc
+sysctl -w kernel.hotplug=/sbin/mdev
+mdev -s
+========================================================
+编译kernel时，kernel feature 
+[*] Use the ARM EABI to compile the kernel
+no sync
+[*] Compile the kernel with debug info
+qemu-system-arm -M versatilepb -m 256 -kernel /huyugui/B2106H/kernel_out/arch/arm/boot/zImage -initrd ../../kernel_out/ramdisk.img -append "console=ttyAMA0 rdinit=/sbin/init" -nographic
+当root目录下存在init时，可以省去rdinit=/sbin/init参数
+
+find . |cpio -o -H newc |gzip -9 > ../ramdisk.img
+make -C ./  O=../../kernel_out ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi-
+
+make -C ./  O=../../kernel_out ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- versatile_defconfig
+make -C ./  O=../../kernel_out ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- zImage
+
+
+
+qemu-system-arm -M versatilepb -m 256 -kernel /huyugui/B2106H/kernel_out/arch/arm/boot/zImage -initrd ../../kernel_out/ramdisk.img -append "console=ttyAMA0 rdinit=/sbin/init" -nographic -s -S
+ddd --debugger /huyugui/arm-2009q3/bin/arm-none-linux-gnueabi-gdb
+gdb> file /huyugui/B2106H/kernel_out/vmlinux
+gdb> target remote:1234

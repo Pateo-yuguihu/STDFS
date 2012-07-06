@@ -1,0 +1,51 @@
+ARM Linux权限内存控制的实现
+
+early_trap_init->modify_domain(DOMAIN_USER, DOMAIN_CLIENT);
+设置USER MODE的domain权限为client(01)
+
+根据创建的page maps表设置0xc0000000开始的地址SVC模式读写，USR模式不能读写
+
+
+gdb dump memory的命令如下:(struct thread_info *)0xc033a000 = (struct task_struct *)->stack
+(gdb) x/32wx 0xc033a000 
+0xc033a000 <init_thread_union>:		0x00000000	0x00000000	0x00000000		0xc033e0c8 (struct task_struct *)
+0xc033a010 <init_thread_union+16>:	0xc0341cec	0x00000000	0x00000017(CPU domain)	0x00000000
+0xc033a020 <init_thread_union+32>:	0x00000000	0x00000000	0x00000000		0x00000000
+0xc033a030 <init_thread_union+48>:	0x00000000	0x00000000	0x00000000		0x00000000
+0xc033a040 <init_thread_union+64>:	0x00000000	0x00000000	0x00000000		0x00000000
+0xc033a050 <init_thread_union+80>:	0x00000000	0x00000000	0x00000000		0x00000000
+0xc033a060 <init_thread_union+96>:	0x00000000	0x00000000	0x00000000		0x00000000
+
+#define DOMAIN_KERNEL	0 DOMAIN_MANAGER
+#define DOMAIN_TABLE	0
+#define DOMAIN_USER	1 DOMAIN_CLIENT
+#define DOMAIN_IO	2 DOMAIN_CLIENT
+
+注：x/32wx为显示32个单位,单位为w（word）,以十六进制显示
+
+
+linux  堆栈expand_stack
+@@@@@@@@0xbe86f000 - 0xbe871000: address 0xbe84f000
+int expand_downwards(struct vm_area_struct *vma,
+				   unsigned long address)
+{
+	int error;
+	if(strncmp(current->comm, "hello", 5) == 0)
+		printk("@@@@@@@@0x%08lx - 0x%08lx: address 0x%08lx\n", vma->vm_start, vma->vm_end, address);
+
+00008000-00009000 r-xp 00000000 00:01 320        /hello
+00010000-00011000 rwxp 00000000 00:01 320        /hello
+40023000-40024000 rwxp 00000000 00:00 0 
+40049000-40066000 r-xp 00000000 00:01 307        /lib/ld-2.8.so
+40066000-40067000 rwxp 00000000 00:00 0 
+4006d000-4006e000 r-xp 0001c000 00:01 307        /lib/ld-2.8.so
+4006e000-4006f000 rwxp 0001d000 00:01 307        /lib/ld-2.8.so
+4009e000-4009f000 rwxp 00000000 00:00 0 
+400f4000-4020f000 r-xp 00000000 00:01 282        /lib/libc-2.8.so
+4020f000-40217000 ---p 0011b000 00:01 282        /lib/libc-2.8.so
+40217000-40219000 r-xp 0011b000 00:01 282        /lib/libc-2.8.so
+40219000-4021a000 rwxp 0011d000 00:01 282        /lib/libc-2.8.so
+4021a000-4021d000 rwxp 00000000 00:00 0 
+be850000-be871000 rw-p 00000000 00:00 0          [stack]
+ffff0000-ffff1000 r-xp 00000000 00:00 0          [vectors]
+
