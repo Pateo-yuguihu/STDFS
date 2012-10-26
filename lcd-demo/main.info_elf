@@ -1,0 +1,431 @@
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           ARM
+  Version:                           0x1
+  Entry point address:               0x8000261
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          122008 (bytes into file)
+  Flags:                             0x5000002, has entry point, Version5 EABI
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         3
+  Size of section headers:           40 (bytes)
+  Number of section headers:         18
+  Section header string table index: 15
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        08000000 008000 004e64 00  AX  0   0  4
+  [ 2] .rodata           PROGBITS        08004e64 00ce64 00067c 00   A  0   0  4
+  [ 3] .data             PROGBITS        20000000 010000 000028 00  WA  0   0  8
+  [ 4] .bss              NOBITS          20000028 010028 000018 00  WA  0   0  4
+  [ 5] ._usrstack        NOBITS          20000040 010040 001000 00  WA  0   0  1
+  [ 6] .comment          PROGBITS        00000000 010028 00003a 01  MS  0   0  1
+  [ 7] .debug_aranges    PROGBITS        00000000 010062 0001e0 00      0   0  1
+  [ 8] .debug_info       PROGBITS        00000000 010242 004d11 00      0   0  1
+  [ 9] .debug_abbrev     PROGBITS        00000000 014f53 00122b 00      0   0  1
+  [10] .debug_line       PROGBITS        00000000 01617e 00225f 00      0   0  1
+  [11] .debug_frame      PROGBITS        00000000 0183e0 001504 00      0   0  4
+  [12] .debug_str        PROGBITS        00000000 0198e4 001bd5 01  MS  0   0  1
+  [13] .debug_loc        PROGBITS        00000000 01b4b9 0026fb 00      0   0  1
+  [14] .ARM.attributes   ARM_ATTRIBUTES  00000000 01dbb4 000031 00      0   0  1
+  [15] .shstrtab         STRTAB          00000000 01dbe5 0000b0 00      0   0  1
+  [16] .symtab           SYMTAB          00000000 01df68 0015b0 10     17  78  4
+  [17] .strtab           STRTAB          00000000 01f518 001213 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x008000 0x08000000 0x08000000 0x054e0 0x054e0 R E 0x8000
+  LOAD           0x010000 0x20000000 0x080054e0 0x00028 0x00040 RW  0x8000
+  LOAD           0x010040 0x20000040 0x08005508 0x00000 0x01000 RW  0x8000
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .text .rodata 
+   01     .data .bss 
+   02     ._usrstack 
+
+There is no dynamic section in this file.
+
+There are no relocations in this file.
+
+There are no unwind sections in this file.
+
+Symbol table '.symtab' contains 347 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 08000000     0 SECTION LOCAL  DEFAULT    1 
+     2: 08004e64     0 SECTION LOCAL  DEFAULT    2 
+     3: 20000000     0 SECTION LOCAL  DEFAULT    3 
+     4: 20000028     0 SECTION LOCAL  DEFAULT    4 
+     5: 20000040     0 SECTION LOCAL  DEFAULT    5 
+     6: 00000000     0 SECTION LOCAL  DEFAULT    6 
+     7: 00000000     0 SECTION LOCAL  DEFAULT    7 
+     8: 00000000     0 SECTION LOCAL  DEFAULT    8 
+     9: 00000000     0 SECTION LOCAL  DEFAULT    9 
+    10: 00000000     0 SECTION LOCAL  DEFAULT   10 
+    11: 00000000     0 SECTION LOCAL  DEFAULT   11 
+    12: 00000000     0 SECTION LOCAL  DEFAULT   12 
+    13: 00000000     0 SECTION LOCAL  DEFAULT   13 
+    14: 00000000     0 SECTION LOCAL  DEFAULT   14 
+    15: 00000000     0 FILE    LOCAL  DEFAULT  ABS startup.c
+    16: 08000000     0 NOTYPE  LOCAL  DEFAULT    1 $d
+    17: 080001e0     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    18: 00000010     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    19: 00000000     0 FILE    LOCAL  DEFAULT  ABS main.c
+    20: 080002b8     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    21: 08004e64     0 NOTYPE  LOCAL  DEFAULT    2 $d
+    22: 08004e5c     0 NOTYPE  LOCAL  DEFAULT    1 $d
+    23: 00000078     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    24: 00000000     0 FILE    LOCAL  DEFAULT  ABS fsmc_sram.c
+    25: 080007a4     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    26: 000001b0     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    27: 00000000     0 FILE    LOCAL  DEFAULT  ABS ili9320_api.c
+    28: 08000850     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    29: 000001e0     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    30: 00000000     0 FILE    LOCAL  DEFAULT  ABS ili9320.c
+    31: 08004ed0     0 NOTYPE  LOCAL  DEFAULT    2 $d
+    32: 0800117c     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    33: 000002ec     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    34: 00000000     0 FILE    LOCAL  DEFAULT  ABS lcd_init.c
+    35: 20000028     0 NOTYPE  LOCAL  DEFAULT    4 $d
+    36: 08001768     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    37: 00000540     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    38: 00000000     0 FILE    LOCAL  DEFAULT  ABS xprintf.c
+    39: 08001b58     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    40: 080054d0     0 NOTYPE  LOCAL  DEFAULT    2 $d
+    41: 000005f8     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    42: 00000000     0 FILE    LOCAL  DEFAULT  ABS memcpy.c
+    43: 080020e8     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    44: 000006cc     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    45: 00000000     0 FILE    LOCAL  DEFAULT  ABS strlen.c
+    46: 08002170     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    47: 000006f8     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    48: 00000000     0 FILE    LOCAL  DEFAULT  ABS core_cm3.c
+    49: 080021d0     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    50: 00000718     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    51: 00000000     0 FILE    LOCAL  DEFAULT  ABS system_stm32f10x.c
+    52: 20000000     0 NOTYPE  LOCAL  DEFAULT    3 $d
+    53: 0800245c     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    54: 0800264d    10 FUNC    LOCAL  DEFAULT    1 SetSysClock
+    55: 08002659   426 FUNC    LOCAL  DEFAULT    1 SetSysClockTo72
+    56: 00000998     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    57: 00000000     0 FILE    LOCAL  DEFAULT  ABS stm32f10x_fsmc.c
+    58: 08002804     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    59: 00000a18     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    60: 00000000     0 FILE    LOCAL  DEFAULT  ABS stm32f10x_gpio.c
+    61: 080033b0     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    62: 00000c38     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    63: 00000000     0 FILE    LOCAL  DEFAULT  ABS stm32f10x_rcc.c
+    64: 20000014     0 NOTYPE  LOCAL  DEFAULT    3 $d
+    65: 20000014    16 OBJECT  LOCAL  DEFAULT    3 APBAHBPrescTable
+    66: 20000024     4 OBJECT  LOCAL  DEFAULT    3 ADCPrescTable
+    67: 08003ab0     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    68: 00000e48     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    69: 00000000     0 FILE    LOCAL  DEFAULT  ABS stm32f10x_usart.c
+    70: 080044a4     0 NOTYPE  LOCAL  DEFAULT    1 $t
+    71: 000011d0     0 NOTYPE  LOCAL  DEFAULT   11 $d
+    72: 080054e0     0 NOTYPE  LOCAL  DEFAULT    2 __fini_array_end
+    73: 080054e0     0 NOTYPE  LOCAL  DEFAULT    2 __fini_array_start
+    74: 080054e0     0 NOTYPE  LOCAL  DEFAULT    2 __init_array_end
+    75: 080054e0     0 NOTYPE  LOCAL  DEFAULT    2 __preinit_array_end
+    76: 080054e0     0 NOTYPE  LOCAL  DEFAULT    2 __init_array_start
+    77: 080054e0     0 NOTYPE  LOCAL  DEFAULT    2 __preinit_array_start
+    78: 08003089    60 FUNC    GLOBAL DEFAULT    1 FSMC_GetECC
+    79: 080002b1     6 FUNC    WEAK   DEFAULT    1 EXTI2_IRQHandler
+    80: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM8_TRG_COM_IRQHandler
+    81: 08002259    24 FUNC    GLOBAL DEFAULT    1 __set_PRIMASK
+    82: 08004abd    60 FUNC    GLOBAL DEFAULT    1 USART_SetGuardTime
+    83: 08003c81    32 FUNC    GLOBAL DEFAULT    1 RCC_HSICmd
+    84: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM8_CC_IRQHandler
+    85: 08003ce9    32 FUNC    GLOBAL DEFAULT    1 RCC_PLLCmd
+    86: 0800384d    84 FUNC    GLOBAL DEFAULT    1 GPIO_EventOutputConfig
+    87: 080002b1     6 FUNC    WEAK   DEFAULT    1 DebugMon_Handler
+    88: 20000040     0 NOTYPE  GLOBAL DEFAULT    5 _susrstack
+    89: 08004485    32 FUNC    GLOBAL DEFAULT    1 RCC_ClearITPendingBit
+    90: 00000000     0 NOTYPE  GLOBAL DEFAULT    1 _isr_vectors_offs
+    91: 0800372d    58 FUNC    GLOBAL DEFAULT    1 GPIO_ReadOutputDataBit
+    92: 080005d9    68 FUNC    GLOBAL DEFAULT    1 printstr
+    93: 080028ed    80 FUNC    GLOBAL DEFAULT    1 FSMC_PCCARDDeInit
+    94: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM1_CC_IRQHandler
+    95: 08000671    18 FUNC    GLOBAL DEFAULT    1 HardFault_Handler
+    96: 08002f99    82 FUNC    GLOBAL DEFAULT    1 FSMC_PCCARDCmd
+    97: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM6_IRQHandler
+    98: 08002271    32 FUNC    GLOBAL DEFAULT    1 __get_FAULTMASK
+    99: 080002b1     6 FUNC    WEAK   DEFAULT    1 SysTick_Handler
+   100: 080022e1    34 FUNC    GLOBAL DEFAULT    1 __REV
+   101: 080008b1    92 FUNC    GLOBAL DEFAULT    1 GUI_Text
+   102: 08001341   136 FUNC    GLOBAL DEFAULT    1 ili9320_Clear
+   103: 08004371    32 FUNC    GLOBAL DEFAULT    1 RCC_MCOConfig
+   104: 080002b1     6 FUNC    WEAK   DEFAULT    1 PVD_IRQHandler
+   105: 080002b1     6 FUNC    WEAK   DEFAULT    1 SDIO_IRQHandler
+   106: 080054e0     0 NOTYPE  GLOBAL DEFAULT    2 _sidata
+   107: 080002b1     6 FUNC    WEAK   DEFAULT    1 PendSV_Handler
+   108: 00000000     0 NOTYPE  WEAK   DEFAULT  UND NMI_Handler
+   109: 080013c9    58 FUNC    GLOBAL DEFAULT    1 ili9320_GetPoint
+   110: 080002b1     6 FUNC    WEAK   DEFAULT    1 EXTI3_IRQHandler
+   111: 08000acd   156 FUNC    GLOBAL DEFAULT    1 LCD_Disp
+   112: 08003e2d    94 FUNC    GLOBAL DEFAULT    1 RCC_ITConfig
+   113: 080002b9    54 FUNC    GLOBAL DEFAULT    1 lcd_rst
+   114: 08002435    40 FUNC    GLOBAL DEFAULT    1 __STREXW
+   115: 08004b31    62 FUNC    GLOBAL DEFAULT    1 USART_SmartCardCmd
+   116: 08001451    94 FUNC    GLOBAL DEFAULT    1 ili9320_DrawPicture
+   117: 08004cf1    62 FUNC    GLOBAL DEFAULT    1 USART_GetFlagStatus
+   118: 080023b9    36 FUNC    GLOBAL DEFAULT    1 __LDREXW
+   119: 080054e0     0 NOTYPE  GLOBAL DEFAULT    2 _etext
+   120: 20000028     0 NOTYPE  GLOBAL DEFAULT    4 _sbss
+   121: 08001769    28 FUNC    GLOBAL DEFAULT    1 LCD_WR_REG
+   122: 08003d09    64 FUNC    GLOBAL DEFAULT    1 RCC_SYSCLKConfig
+   123: 08003bd5    98 FUNC    GLOBAL DEFAULT    1 RCC_WaitForHSEStartUp
+   124: 080016c1    32 FUNC    GLOBAL DEFAULT    1 ili9320_ReadData
+   125: 080007a5   170 FUNC    GLOBAL DEFAULT    1 FSMC_LCD_Init
+   126: 08004925    56 FUNC    GLOBAL DEFAULT    1 USART_SetAddress
+   127: 080038a1    32 FUNC    GLOBAL DEFAULT    1 GPIO_EventOutputCmd
+   128: 08004af9    56 FUNC    GLOBAL DEFAULT    1 USART_SetPrescaler
+   129: 08004331    32 FUNC    GLOBAL DEFAULT    1 RCC_BackupResetCmd
+   130: 08001571   198 FUNC    GLOBAL DEFAULT    1 ili9320_Test
+   131: 08004c39    62 FUNC    GLOBAL DEFAULT    1 USART_OneBitMethodCmd
+   132: 08002ea9    84 FUNC    GLOBAL DEFAULT    1 FSMC_NORSRAMCmd
+   133: 080020e9   134 FUNC    GLOBAL DEFAULT    1 memcpy
+   134: 080038c1   286 FUNC    GLOBAL DEFAULT    1 GPIO_PinRemapConfig
+   135: 08004351    32 FUNC    GLOBAL DEFAULT    1 RCC_ClockSecuritySystemCm
+   136: 080002b1     6 FUNC    WEAK   DEFAULT    1 EXTI0_IRQHandler
+   137: 080002b1     6 FUNC    WEAK   DEFAULT    1 I2C2_EV_IRQHandler
+   138: 08004421    34 FUNC    GLOBAL DEFAULT    1 RCC_ClearFlag
+   139: 20000000     4 OBJECT  GLOBAL DEFAULT    3 SystemCoreClock
+   140: 08002805    90 FUNC    GLOBAL DEFAULT    1 FSMC_NORSRAMDeInit
+   141: 0800234d    36 FUNC    GLOBAL DEFAULT    1 __RBIT
+   142: 08004a75    36 FUNC    GLOBAL DEFAULT    1 USART_ReceiveData
+   143: 08003b4d   136 FUNC    GLOBAL DEFAULT    1 RCC_HSEConfig
+   144: 08004e5c     8 OBJECT  GLOBAL DEFAULT    1 module_test
+   145: 08003295   148 FUNC    GLOBAL DEFAULT    1 FSMC_GetITStatus
+   146: 080016a5    26 FUNC    GLOBAL DEFAULT    1 ili9320_WriteData
+   147: 080002b1     6 FUNC    WEAK   DEFAULT    1 UsageFault_Handler
+   148: 08002291    24 FUNC    GLOBAL DEFAULT    1 __set_FAULTMASK
+   149: 080041e1    82 FUNC    GLOBAL DEFAULT    1 RCC_APB2PeriphClockCmd
+   150: 08001d31   346 FUNC    GLOBAL DEFAULT    1 xitoa
+   151: 080002b1     6 FUNC    WEAK   DEFAULT    1 ADC1_2_IRQHandler
+   152: 080034f9   432 FUNC    GLOBAL DEFAULT    1 GPIO_Init
+   153: 08003ca1    70 FUNC    GLOBAL DEFAULT    1 RCC_PLLConfig
+   154: 08003ead    64 FUNC    GLOBAL DEFAULT    1 RCC_ADCCLKConfig
+   155: 08001b59   386 FUNC    GLOBAL DEFAULT    1 xatoi
+   156: 20000000     0 NOTYPE  GLOBAL DEFAULT    3 _sdata
+   157: 080002b1     6 FUNC    WEAK   DEFAULT    1 SPI1_IRQHandler
+   158: 080047f9    62 FUNC    GLOBAL DEFAULT    1 USART_Cmd
+   159: 080034d9    30 FUNC    GLOBAL DEFAULT    1 GPIO_AFIODeInit
+   160: 08002041   168 FUNC    GLOBAL DEFAULT    1 put_dump
+   161: 08001785    44 FUNC    GLOBAL DEFAULT    1 LCD_WR_CMD
+   162: 08004cb1    62 FUNC    GLOBAL DEFAULT    1 USART_IrDACmd
+   163: 080002b1     6 FUNC    WEAK   DEFAULT    1 TAMPER_IRQHandler
+   164: 080037ed    28 FUNC    GLOBAL DEFAULT    1 GPIO_Write
+   165: 08000631    64 FUNC    GLOBAL DEFAULT    1 init_module
+   166: 08003769    26 FUNC    GLOBAL DEFAULT    1 GPIO_ReadOutputData
+   167: 080012f1    78 FUNC    GLOBAL DEFAULT    1 ili9320_SetWindows
+   168: 08003eed    94 FUNC    GLOBAL DEFAULT    1 RCC_LSEConfig
+   169: 08004e19    66 FUNC    GLOBAL DEFAULT    1 USART_ClearITPendingBit
+   170: 08003f99    32 FUNC    GLOBAL DEFAULT    1 RCC_RTCCLKCmd
+   171: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM8_UP_IRQHandler
+   172: 08004235    82 FUNC    GLOBAL DEFAULT    1 RCC_APB1PeriphClockCmd
+   173: 08004445    62 FUNC    GLOBAL DEFAULT    1 RCC_GetITStatus
+   174: 08002e05   162 FUNC    GLOBAL DEFAULT    1 FSMC_PCCARDStructInit
+   175: 080022a9    32 FUNC    GLOBAL DEFAULT    1 __get_CONTROL
+   176: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA2_Channel2_IRQHandler
+   177: 08001745    34 FUNC    GLOBAL DEFAULT    1 ili9320_Delay
+   178: 0800418d    82 FUNC    GLOBAL DEFAULT    1 RCC_AHBPeriphClockCmd
+   179: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA1_Channel4_IRQHandler
+   180: 08004bf1    70 FUNC    GLOBAL DEFAULT    1 USART_OverSampling8Cmd
+   181: 08002d69   154 FUNC    GLOBAL DEFAULT    1 FSMC_NANDStructInit
+   182: 08001e8d   436 FUNC    GLOBAL DEFAULT    1 xprintf
+   183: 08001145    54 FUNC    GLOBAL DEFAULT    1 GUI_Square
+   184: 080002b1     6 FUNC    WEAK   DEFAULT    1 USART3_IRQHandler
+   185: 08004e5c     0 NOTYPE  GLOBAL DEFAULT    1 _module_start
+   186: 080002b1     6 FUNC    WEAK   DEFAULT    1 RTC_IRQHandler
+   187: 080021d1    16 FUNC    GLOBAL DEFAULT    1 __get_PSP
+   188: 20000040     0 NOTYPE  GLOBAL DEFAULT    4 _ebss
+   189: 08004d55   194 FUNC    GLOBAL DEFAULT    1 USART_GetITStatus
+   190: 080021e1     8 FUNC    GLOBAL DEFAULT    1 __set_PSP
+   191: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA1_Channel7_IRQHandler
+   192: 08000261    80 FUNC    GLOBAL DEFAULT    1 Reset_Handler
+   193: 08003711    26 FUNC    GLOBAL DEFAULT    1 GPIO_ReadInputData
+   194: 080049d5    54 FUNC    GLOBAL DEFAULT    1 USART_LINBreakDetectLengt
+   195: 080002b1     6 FUNC    WEAK   DEFAULT    1 CAN1_RX1_IRQHandler
+   196: 080002b1     6 FUNC    WEAK   DEFAULT    1 UART5_IRQHandler
+   197: 08004391   144 FUNC    GLOBAL DEFAULT    1 RCC_GetFlagStatus
+   198: 080002b1     6 FUNC    WEAK   DEFAULT    1 ADC3_IRQHandler
+   199: 08004e64     0 NOTYPE  GLOBAL DEFAULT    1 _module_end
+   200: 08003785    28 FUNC    GLOBAL DEFAULT    1 GPIO_SetBits
+   201: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM4_IRQHandler
+   202: 08003d49    30 FUNC    GLOBAL DEFAULT    1 RCC_GetSYSCLKSource
+   203: 080037bd    46 FUNC    GLOBAL DEFAULT    1 GPIO_WriteBit
+   204: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA2_Channel1_IRQHandler
+   205: 080017b1    40 FUNC    GLOBAL DEFAULT    1 LCD_RD_data
+   206: 080002b1     6 FUNC    WEAK   DEFAULT    1 I2C1_EV_IRQHandler
+   207: 08002371    36 FUNC    GLOBAL DEFAULT    1 __LDREXB
+   208: 08000e8d   542 FUNC    GLOBAL DEFAULT    1 GUI_Circle
+   209: 08003a91    30 FUNC    GLOBAL DEFAULT    1 GPIO_ETH_MediaInterfaceCo
+   210: 08003fb9   466 FUNC    GLOBAL DEFAULT    1 RCC_GetClocksFreq
+   211: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA1_Channel6_IRQHandler
+   212: 080002b1     6 FUNC    WEAK   DEFAULT    1 UART4_IRQHandler
+   213: 0800457d   426 FUNC    GLOBAL DEFAULT    1 USART_Init
+   214: 08002efd   154 FUNC    GLOBAL DEFAULT    1 FSMC_NANDCmd
+   215: 08001639    78 FUNC    GLOBAL DEFAULT    1 ili9320_BGR2RGB
+   216: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM3_IRQHandler
+   217: 080002b1     6 FUNC    WEAK   DEFAULT    1 RCC_IRQHandler
+   218: 080031a5   114 FUNC    GLOBAL DEFAULT    1 FSMC_GetFlagStatus
+   219: 080030c5   224 FUNC    GLOBAL DEFAULT    1 FSMC_ITConfig
+   220: 08001d05    44 FUNC    GLOBAL DEFAULT    1 xputs
+   221: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM1_TRG_COM_IRQHandler
+   222: 0800061d    18 FUNC    GLOBAL DEFAULT    1 test
+   223: 08002239    32 FUNC    GLOBAL DEFAULT    1 __get_PRIMASK
+   224: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA1_Channel1_IRQHandler
+   225: 08001725    10 FUNC    GLOBAL DEFAULT    1 ili9320_Reset
+   226: 08004ed0  1536 OBJECT  GLOBAL DEFAULT    2 ascii_8x16
+   227: 080002b1     6 FUNC    GLOBAL DEFAULT    1 Default_Handler
+   228: 20000040     0 NOTYPE  GLOBAL DEFAULT    4 __end
+   229: 20000004    16 OBJECT  GLOBAL DEFAULT    3 AHBPrescTable
+   230: 08004bb1    62 FUNC    GLOBAL DEFAULT    1 USART_HalfDuplexCmd
+   231: 08003f6d    42 FUNC    GLOBAL DEFAULT    1 RCC_RTCCLKConfig
+   232: 080002b1     6 FUNC    WEAK   DEFAULT    1 EXTI15_10_IRQHandler
+   233: 0800090d   448 FUNC    GLOBAL DEFAULT    1 GUI_Chn
+   234: 080012ad    10 FUNC    GLOBAL DEFAULT    1 ili9320_Initializtion
+   235: 08004839   162 FUNC    GLOBAL DEFAULT    1 USART_ITConfig
+   236: 08002329    36 FUNC    GLOBAL DEFAULT    1 __REVSH
+   237: 08003329   134 FUNC    GLOBAL DEFAULT    1 FSMC_ClearITPendingBit
+   238: 080037a1    28 FUNC    GLOBAL DEFAULT    1 GPIO_ResetBits
+   239: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM7_IRQHandler
+   240: 080001e1   126 FUNC    GLOBAL DEFAULT    1 __Init_Data
+   241: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM5_IRQHandler
+   242: 08001405    74 FUNC    GLOBAL DEFAULT    1 ili9320_SetPoint
+   243: 08004c79    54 FUNC    GLOBAL DEFAULT    1 USART_IrDAConfig
+   244: 0800293d   336 FUNC    GLOBAL DEFAULT    1 FSMC_NORSRAMInit
+   245: 080002b1     6 FUNC    WEAK   DEFAULT    1 EXTI9_5_IRQHandler
+   246: 080039e1   176 FUNC    GLOBAL DEFAULT    1 GPIO_EXTILineConfig
+   247: 08000b69   802 FUNC    GLOBAL DEFAULT    1 GUI_Line
+   248: 080044a5   214 FUNC    GLOBAL DEFAULT    1 USART_DeInit
+   249: 080002b1     6 FUNC    WEAK   DEFAULT    1 SPI2_IRQHandler
+   250: 08001819   832 FUNC    GLOBAL DEFAULT    1 LCD_Init
+   251: 080002b1     6 FUNC    WEAK   DEFAULT    1 MemManage_Handler
+   252: 08003c39    70 FUNC    GLOBAL DEFAULT    1 RCC_AdjustHSICalibrationV
+   253: 08000685   286 FUNC    GLOBAL DEFAULT    1 main
+   254: 0800476d    86 FUNC    GLOBAL DEFAULT    1 USART_ClockInit
+   255: 08002a8d   254 FUNC    GLOBAL DEFAULT    1 FSMC_NANDInit
+   256: 080002b1     6 FUNC    WEAK   DEFAULT    1 SVC_Handler
+   257: 08004a99    34 FUNC    GLOBAL DEFAULT    1 USART_SendBreak
+   258: 080022c9    24 FUNC    GLOBAL DEFAULT    1 __set_CONTROL
+   259: 08003da9    64 FUNC    GLOBAL DEFAULT    1 RCC_PCLK1Config
+   260: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA1_Channel5_IRQHandler
+   261: 08003e8d    30 FUNC    GLOBAL DEFAULT    1 RCC_USBCLKConfig
+   262: 080002b1     6 FUNC    WEAK   DEFAULT    1 EXTI4_IRQHandler
+   263: 080002b1     6 FUNC    WEAK   DEFAULT    1 USB_LP_CAN1_RX0_IRQHandle
+   264: 08003de9    68 FUNC    GLOBAL DEFAULT    1 RCC_PCLK2Config
+   265: 080012b9    54 FUNC    GLOBAL DEFAULT    1 ili9320_SetCursor
+   266: 2000002c     4 OBJECT  GLOBAL DEFAULT    4 GPIO_InitStructure
+   267: 080021e9    16 FUNC    GLOBAL DEFAULT    1 __get_MSP
+   268: 08004d31    34 FUNC    GLOBAL DEFAULT    1 USART_ClearFlag
+   269: 0800245d   168 FUNC    GLOBAL DEFAULT    1 SystemInit
+   270: 08002fed   154 FUNC    GLOBAL DEFAULT    1 FSMC_NANDECCCmd
+   271: 08001cdd    40 FUNC    GLOBAL DEFAULT    1 xputc
+   272: 080033b1   294 FUNC    GLOBAL DEFAULT    1 GPIO_DeInit
+   273: 20000030    16 OBJECT  GLOBAL DEFAULT    4 USART_InitStructure
+   274: 08000315   222 FUNC    GLOBAL DEFAULT    1 Uart_Init
+   275: 0800117d   302 FUNC    GLOBAL DEFAULT    1 CheckController
+   276: 080002b1     6 FUNC    WEAK   DEFAULT    1 USB_HP_CAN1_TX_IRQHandler
+   277: 08003ab1   154 FUNC    GLOBAL DEFAULT    1 RCC_DeInit
+   278: 08000851    94 FUNC    GLOBAL DEFAULT    1 GUI_Color565
+   279: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA1_Channel3_IRQHandler
+   280: 080002b1     6 FUNC    WEAK   DEFAULT    1 FSMC_IRQHandler
+   281: 08002305    36 FUNC    GLOBAL DEFAULT    1 __REV16
+   282: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM1_UP_IRQHandler
+   283: 080017d9    32 FUNC    GLOBAL DEFAULT    1 LCD_WR_Data
+   284: 08002b8d   212 FUNC    GLOBAL DEFAULT    1 FSMC_PCCARDInit
+   285: 080002b1     6 FUNC    WEAK   DEFAULT    1 WWDG_IRQHandler
+   286: 080042dd    82 FUNC    GLOBAL DEFAULT    1 RCC_APB1PeriphResetCmd
+   287: 080021f9     8 FUNC    GLOBAL DEFAULT    1 __set_MSP
+   288: 00001000     0 NOTYPE  GLOBAL DEFAULT  ABS _min_stack
+   289: 08002861   138 FUNC    GLOBAL DEFAULT    1 FSMC_NANDDeInit
+   290: 080002f1    34 FUNC    GLOBAL DEFAULT    1 Delay
+   291: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM2_IRQHandler
+   292: 20001040     0 NOTYPE  GLOBAL DEFAULT    5 _eusrstack
+   293: 08001731    20 FUNC    GLOBAL DEFAULT    1 ili9320_BackLight
+   294: 0800495d    54 FUNC    GLOBAL DEFAULT    1 USART_WakeUpConfig
+   295: 080036a9    42 FUNC    GLOBAL DEFAULT    1 GPIO_StructInit
+   296: 080017f9    32 FUNC    GLOBAL DEFAULT    1 LCD_WR_Data_8
+   297: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM1_BRK_IRQHandler
+   298: 08004a4d    38 FUNC    GLOBAL DEFAULT    1 USART_SendData
+   299: 20010000     0 NOTYPE  GLOBAL DEFAULT  ABS _estack
+   300: 080002b1     6 FUNC    WEAK   DEFAULT    1 EXTI1_IRQHandler
+   301: 08002221    24 FUNC    GLOBAL DEFAULT    1 __set_BASEPRI
+   302: 20000028     0 NOTYPE  GLOBAL DEFAULT    3 _edata
+   303: 08004995    62 FUNC    GLOBAL DEFAULT    1 USART_ReceiverWakeUpCmd
+   304: 08004729    66 FUNC    GLOBAL DEFAULT    1 USART_StructInit
+   305: 20000040     0 NOTYPE  GLOBAL DEFAULT    4 _end
+   306: 080003f5   424 FUNC    GLOBAL DEFAULT    1 Bike_GPIO_Init
+   307: 080002b1     6 FUNC    WEAK   DEFAULT    1 RTCAlarm_IRQHandler
+   308: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA2_Channel4_5_IRQHandle
+   309: 08001689    28 FUNC    GLOBAL DEFAULT    1 ili9320_WriteIndex
+   310: 080002b1     6 FUNC    WEAK   DEFAULT    1 USART2_IRQHandler
+   311: 08004b71    62 FUNC    GLOBAL DEFAULT    1 USART_SmartCardNACKCmd
+   312: 080016e1    32 FUNC    GLOBAL DEFAULT    1 ili9320_ReadRegister
+   313: 08000000   480 OBJECT  GLOBAL DEFAULT    1 g_pfnVectors
+   314: 08002409    42 FUNC    GLOBAL DEFAULT    1 __STREXH
+   315: 08002505   328 FUNC    GLOBAL DEFAULT    1 SystemCoreClockUpdate
+   316: 08002c61   262 FUNC    GLOBAL DEFAULT    1 FSMC_NORSRAMStructInit
+   317: 08004a0d    62 FUNC    GLOBAL DEFAULT    1 USART_LINCmd
+   318: 08002395    36 FUNC    GLOBAL DEFAULT    1 __LDREXH
+   319: 080002b1     6 FUNC    WEAK   DEFAULT    1 I2C2_ER_IRQHandler
+   320: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA1_Channel2_IRQHandler
+   321: 080002b1     6 FUNC    WEAK   DEFAULT    1 TIM8_BRK_IRQHandler
+   322: 080002b1     6 FUNC    WEAK   DEFAULT    1 CAN1_SCE_IRQHandler
+   323: 080002b1     6 FUNC    WEAK   DEFAULT    1 FLASH_IRQHandler
+   324: 080014b1   190 FUNC    GLOBAL DEFAULT    1 ili9320_PutChar
+   325: 08003809    66 FUNC    GLOBAL DEFAULT    1 GPIO_PinLockConfig
+   326: 080002b1     6 FUNC    WEAK   DEFAULT    1 BusFault_Handler
+   327: 080002b1     6 FUNC    WEAK   DEFAULT    1 USART1_IRQHandler
+   328: 08003f4d    32 FUNC    GLOBAL DEFAULT    1 RCC_LSICmd
+   329: 080010ad   152 FUNC    GLOBAL DEFAULT    1 GUI_Rectangle
+   330: 08002171    94 FUNC    GLOBAL DEFAULT    1 strlen
+   331: 080002b1     6 FUNC    WEAK   DEFAULT    1 SPI3_IRQHandler
+   332: 08002201    32 FUNC    GLOBAL DEFAULT    1 __get_BASEPRI
+   333: 20000028     4 OBJECT  GLOBAL DEFAULT    4 color1
+   334: 080047c5    50 FUNC    GLOBAL DEFAULT    1 USART_ClockStructInit
+   335: 08004289    82 FUNC    GLOBAL DEFAULT    1 RCC_APB2PeriphResetCmd
+   336: 080002b1     6 FUNC    WEAK   DEFAULT    1 I2C1_ER_IRQHandler
+   337: 080023dd    42 FUNC    GLOBAL DEFAULT    1 __STREXB
+   338: 080002b1     6 FUNC    WEAK   DEFAULT    1 MMI_Handler
+   339: 08001701    34 FUNC    GLOBAL DEFAULT    1 ili9320_WriteRegister
+   340: 080036d5    58 FUNC    GLOBAL DEFAULT    1 GPIO_ReadInputDataBit
+   341: 080048dd    72 FUNC    GLOBAL DEFAULT    1 USART_DMACmd
+   342: 0800059d    58 FUNC    GLOBAL DEFAULT    1 put_char
+   343: 080002b1     6 FUNC    WEAK   DEFAULT    1 USBWakeUp_IRQHandler
+   344: 08003d69    64 FUNC    GLOBAL DEFAULT    1 RCC_HCLKConfig
+   345: 08003219   122 FUNC    GLOBAL DEFAULT    1 FSMC_ClearFlag
+   346: 080002b1     6 FUNC    WEAK   DEFAULT    1 DMA2_Channel3_IRQHandler
+
+No version information found in this file.
+Attribute Section: aeabi
+File Attributes
+  Tag_CPU_name: "Cortex-M3"
+  Tag_CPU_arch: v7
+  Tag_CPU_arch_profile: Microcontroller
+  Tag_THUMB_ISA_use: Thumb-2
+  Tag_ABI_PCS_wchar_t: 4
+  Tag_ABI_FP_denormal: Needed
+  Tag_ABI_FP_exceptions: Needed
+  Tag_ABI_FP_number_model: IEEE 754
+  Tag_ABI_align_needed: 8-byte
+  Tag_ABI_align_preserved: 8-byte, except leaf SP
+  Tag_ABI_enum_size: small
+  Tag_ABI_optimization_goals: Aggressive Debug
