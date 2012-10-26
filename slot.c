@@ -7,7 +7,7 @@
 
 static struct class *slot_class;
 static struct device *slot_dev;
-dd
+
 enum slot_status {
 	SLOT_INERT,
 	SLOT_REMOVE,
