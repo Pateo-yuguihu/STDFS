@@ -41,5 +41,5 @@ ucos:
 clean:
 	$(MAKE) -C src $@
 	$(MAKE) -C libs $@
-	rm -f $(PROGRAM).elf $(PROGRAM).hex $(PROGRAM).bin $(PROGRAM).info_elf $(PROGRAM).info_size
+	rm -f $(PROGRAM).elf $(PROGRAM).hex $(PROGRAM).bin $(PROGRAM).info_elf $(PROGRAM).info_size map.o map.c main_tmp.elf main.map
 	$(MAKE) -C ucos $@
