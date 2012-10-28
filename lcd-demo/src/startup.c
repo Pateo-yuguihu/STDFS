@@ -21,7 +21,7 @@ void WEAK UsageFault_Handler(void);
 void WEAK MemManage_Handler(void);
 void WEAK SVC_Handler(void);
 void WEAK DebugMon_Handler(void);
-void WEAK PendSV_Handler(void);
+void      OS_CPU_PendSVHandler(void);
 void WEAK SysTick_Handler(void);
 void WEAK WWDG_IRQHandler(void);
 void WEAK PVD_IRQHandler(void);
@@ -100,7 +100,7 @@ void (* const g_pfnVectors[])(void) = {
 	SVC_Handler,               /* SVCall Handler */
 	DebugMon_Handler,               /* Debug Monitor Handler */
 	0,                 /* Reserved */
-	PendSV_Handler,              /* PendSV Handler */
+	OS_CPU_PendSVHandler,              /* PendSV Handler */
 	SysTick_Handler,            /* SysTick Handler */
 	/* External Interrupts */
 	WWDG_IRQHandler,                   /* Window Watchdog */
@@ -197,7 +197,7 @@ void Reset_Handler(void) {
 	SCB->VTOR = 0x08000000 | ((u32)&_isr_vectors_offs & (u32)0x1FFFFF80); /* set interrupt vector table address */
 	SystemInit(); /* configure the clock */
 	//userstack_enable();
-	set_user_mode();
+	//set_user_mode();
 	main(); /* start execution of the program */
 	while(1) {}
 }
@@ -208,7 +208,7 @@ void Reset_Handler(void) {
 #pragma weak UsageFault_Handler           = Default_Handler
 #pragma weak SVC_Handler        = Default_Handler
 #pragma weak DebugMon_Handler             = Default_Handler
-#pragma weak PendSV_Handler     = Default_Handler
+//#pragma weak PendSV_Handler     = Default_Handler
 #pragma weak SysTick_Handler    = Default_Handler
 #pragma weak WWDG_IRQHandler              = Default_Handler
 #pragma weak PVD_IRQHandler               = Default_Handler

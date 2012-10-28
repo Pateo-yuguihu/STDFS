@@ -5,7 +5,7 @@ MEMORY {
 	FLASH (RX) : ORIGIN = 0x08000000 , LENGTH = 512K
 }
 _estack     = ORIGIN(RAM)+LENGTH(RAM)-1;                /* end of the stack */
-_min_stack      = 0x1000;                                 /* minimum stack space to reserve for the user app */
+_min_stack      = 4K;                                /* minimum stack space to reserve for the user app */
 /* check valid alignment for the vector table */
 ASSERT(ORIGIN(FLASH) == ALIGN(ORIGIN(FLASH), 0x80), "Start of memory region flash not aligned for startup vector table");
 SECTIONS {

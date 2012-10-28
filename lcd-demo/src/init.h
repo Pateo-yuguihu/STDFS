@@ -28,4 +28,6 @@ struct sys_init core_##func	\
 	.setup		= func,		\
 	.name		= _name, \
 }
+
+void xprintf (const char* str, ...);
 #endif

@@ -1,11 +1,10 @@
 include Makefile.common
-LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections -L$(LIBDIR) -nostartfiles -Wl,--gc-sections,-Tlinker.ld
+LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections -L$(LIBDIR) -L$(UCOSLIB) -nostartfiles -Wl,--gc-sections,-Tlinker.ld
 
 LDLIBS+=-lm -lc
-LDLIBS+=-lstm32
+LDLIBS+=-lstm32 -luCOS-II
 
-STARTUP=startup.c
-all: libs src
+all: libs src ucos
 	@echo "1. Make ELF without function map table"
 	$(CC) -o $(PROGRAM)_tmp.elf $(LDFLAGS) \
 		-W1,--whole-archive \
@@ -25,9 +24,10 @@ all: libs src
 	$(OBJCOPY) -O ihex $(PROGRAM).elf $(PROGRAM).hex
 	$(OBJCOPY) -O binary $(PROGRAM).elf $(PROGRAM).bin
 	arm-none-eabi-nm -n $(PROGRAM).elf > $(PROGRAM).map
+	@arm-none-eabi-size --format=SysV  -x $(PROGRAM).elf
 	cp main.bin /media/sf_ubuntu/
 
-.PHONY:libs src clean
+.PHONY:libs src ucos clean
 
 libs:
 	$(MAKE) -C libs $@
@@ -35,8 +35,11 @@ libs:
 src:
 	$(MAKE) -C src $@
 
+ucos:
+	$(MAKE) -C ucos $@
+
 clean:
 	$(MAKE) -C src $@
 	$(MAKE) -C libs $@
 	rm -f $(PROGRAM).elf $(PROGRAM).hex $(PROGRAM).bin $(PROGRAM).info_elf $(PROGRAM).info_size
-	rm -f $(PROGRAM)_tmp.elf
+	$(MAKE) -C ucos $@

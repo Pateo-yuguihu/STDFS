@@ -318,10 +318,9 @@ void OSTimeTickHook(void)
 *********************************************************************************************************
 */
 
-void OS_CPU_SysTickHandler(void)
+void SysTick_Handler(void)
 {
   OS_CPU_SR cpu_sr;
-
   OS_ENTER_CRITICAL();          /* Tell uC/OS-II that we are starting an ISR          */
   OSIntNesting++;
   OS_EXIT_CRITICAL();
@@ -348,7 +347,7 @@ void OS_CPU_SysTickInit(void)
 {
   INT32U cnts;
 
-  cnts = BSP_CPU_ClkFreq() / OS_TICKS_PER_SEC;
+  cnts = 72000000 / OS_TICKS_PER_SEC;
 
   OS_CPU_CM3_NVIC_ST_RELOAD = (cnts - 1);
   /* Enable timer.                                      */
