@@ -1,13 +1,9 @@
-/*******************************************
-				  2.4寸 QVGA显示驱动程序
-**********************************************/
 #include "fsmc_sram.h"
 
 #define Bank1_LCD_D    ((uint32_t)0x60020000)    //disp Data ADDR
 #define Bank1_LCD_C    ((uint32_t)0x60000000)	 //disp Reg ADDR
 
 unsigned long color1=0;
-//void MUC_Init();
 void LCD_Init(void);
 void LCD_WR_REG(unsigned int index);
 void LCD_WR_CMD(unsigned int index,unsigned int val);
@@ -18,15 +14,12 @@ unsigned int LCD_RD_data(void);
 extern void lcd_rst(void);
 extern void Delay(__IO uint32_t nCount);
 
-//写寄存器地址函数
 void LCD_WR_REG(unsigned int index)
 {
 	*(__IO uint16_t *)(Bank1_LCD_C)= index;
 
 }
 
-//写寄存器数据函数
-//输入：dbw 数据位数，1为16位，0为8位。
 void LCD_WR_CMD(unsigned int index,unsigned int val)
 {	
 	*(__IO uint16_t *)(Bank1_LCD_C)= index;	
@@ -40,7 +33,6 @@ unsigned int LCD_RD_data(void){
 	return(a);	
 }
 
-//写16位数据函数
 void LCD_WR_Data(unsigned int val)
 {   
 	*(__IO uint16_t *) (Bank1_LCD_D)= val; 	
@@ -51,8 +43,6 @@ void LCD_WR_Data_8(unsigned int val)
 	*(__IO uint16_t *) (Bank1_LCD_D)= val;
 }
 
-
-//初始化函数
 void LCD_Init(void)
 {
 	lcd_rst();	 
@@ -124,8 +114,8 @@ void LCD_Init(void)
 	LCD_WR_CMD(0x0098, 0x0000);
 	LCD_WR_CMD(0x0007, 0x0133); // 262K color and display ON
 
-    LCD_WR_CMD(32, 0);
-    LCD_WR_CMD(33, 0x013F);
+	LCD_WR_CMD(32, 0);
+	LCD_WR_CMD(33, 0x013F);
 	*(__IO uint16_t *) (Bank1_LCD_C)= 34;
 
 	for(color1=0;color1<76800;color1++)
@@ -135,4 +125,3 @@ void LCD_Init(void)
 	color1=0;				
 
 }
-/******************* (C) COPYRIGHT 2009 STMicroelectronics *****END OF FILE****/

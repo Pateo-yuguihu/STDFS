@@ -35,8 +35,6 @@ void FSMC_LCD_Init(void)
 {
   FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
   FSMC_NORSRAMTimingInitTypeDef  p;
-  //GPIO_InitTypeDef GPIO_InitStructure; 
-  
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_FSMC, ENABLE);
 
   p.FSMC_AddressSetupTime = 0x02;
@@ -62,24 +60,9 @@ void FSMC_LCD_Init(void)
   FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &p;
   FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &p;	  
 
- 
-
- 
-
   FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure); 
 
   /* Enable FSMC Bank1_SRAM Bank */
   FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM1, ENABLE);  
 }
 
-/**
-  * @brief  Writes a Half-word buffer to the FSMC SRAM memory. 
-  * @param pBuffer : pointer to buffer. 
-  * @param WriteAddr : SRAM memory internal address from which the data 
-  *        will be written.
-  * @param NumHalfwordToWrite : number of half-words to write. 
-  * @retval : None
-  */
-
-
-/******************* (C) COPYRIGHT 2009 STMicroelectronics *****END OF FILE****/

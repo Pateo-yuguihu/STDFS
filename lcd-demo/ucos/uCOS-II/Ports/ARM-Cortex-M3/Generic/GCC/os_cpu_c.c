@@ -341,7 +341,6 @@ void SysTick_Handler(void)
 * Note(s)    : 1) This function MUST be called after OSStart() & after processor initialization.
 *********************************************************************************************************
 */
-INT32U BSP_CPU_ClkFreq(void);
 
 void OS_CPU_SysTickInit(void)
 {

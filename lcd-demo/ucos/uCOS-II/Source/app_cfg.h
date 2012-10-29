@@ -48,15 +48,9 @@
 */
 
 #define  APP_TASK_START_PRIO                              15
-#define  APP_TASK_SPRAY_PRIO                              16
 #define  APP_TASK_MONITOR_PRIO                            12
-#define  APP_TASK_U1RX_PRIO                                9
-#define  APP_TASK_U2RX_PRIO                                3
+#define  APP_TASK_LED_PRIO                            	  11
 #define  APP_TASK_U3RX_PRIO                                4
-#define  APP_TASK_U1TX_PRIO                               57
-#define  APP_TASK_U2TX_PRIO                               56
-#define  APP_TASK_U3TX_PRIO                               55
-#define  APP_TASK_DISOUT_PRIO                             58
 #define  OS_TASK_TMR_PRIO                                 60
 /*
 *********************************************************************************************************
@@ -66,15 +60,9 @@
 */
 
 #define  APP_TASK_START_STK_SIZE                         128
-#define  APP_TASK_SPRAY_STK_SIZE                         128
 #define  APP_TASK_MONITOR_STK_SIZE                       128
-#define  APP_TASK_U1RX_STK_SIZE                          128
-#define  APP_TASK_U2RX_STK_SIZE                          128
-#define  APP_TASK_U3RX_STK_SIZE                          128
+#define  APP_TASK_LED_STK_SIZE                           128
 #define  APP_TASK_U1TX_STK_SIZE                          128
-#define  APP_TASK_U2TX_STK_SIZE                          128
-#define  APP_TASK_U3TX_STK_SIZE                          128
-#define  APP_TASK_DISOUT_STK_SIZE                        128
 
 /*
 *********************************************************************************************************

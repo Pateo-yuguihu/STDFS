@@ -196,8 +196,6 @@ void Reset_Handler(void) {
 	extern u32 _isr_vectors_offs; /* the offset to the vector table in ram */
 	SCB->VTOR = 0x08000000 | ((u32)&_isr_vectors_offs & (u32)0x1FFFFF80); /* set interrupt vector table address */
 	SystemInit(); /* configure the clock */
-	//userstack_enable();
-	//set_user_mode();
 	main(); /* start execution of the program */
 	while(1) {}
 }
