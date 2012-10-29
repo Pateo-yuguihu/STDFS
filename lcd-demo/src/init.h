@@ -4,6 +4,7 @@
  */
 #ifndef __INIT_H__
 #define __INIT_H__
+#include <ucos_ii.h>
 
 struct sys_init{
 	char *name;
@@ -30,4 +31,8 @@ struct sys_init core_##func	\
 }
 
 void xprintf (const char* str, ...);
+
+#define info(format, arg...)\
+	xprintf("[%d]" format, OSTime, ## arg)
+
 #endif

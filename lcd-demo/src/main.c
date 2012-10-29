@@ -37,14 +37,14 @@ static OS_STK app_led_stk[APP_TASK_LED_STK_SIZE];
 static void app_monitor(void *p_arg)
 {
 	while(1) {
-		xprintf("[%d]app_monitor\n", OSTime);
+		info("app_monitor\n");
 		OSTimeDly(2000);
 	}
 }
 
 static void app_led(void *p_arg)
 {
-	xprintf("app_led start...\n");
+	info("app_led start...\n");
 	while(1) {
 		GPIO_SetBits(GPIOC, GPIO_Pin_6);
 		OSTimeDly(1000);
@@ -70,7 +70,7 @@ static void app_start(void *p_arg)
 	OSTaskNameSet(APP_TASK_LED_PRIO, (CPU_INT08U *)"app_led", &os_err);
 
 	while(1) {
-		xprintf("app_start\n");
+		info("app_start\n");
 		OSTimeDly(1000);
 	}
 }
