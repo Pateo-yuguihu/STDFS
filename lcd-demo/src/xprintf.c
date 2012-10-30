@@ -80,6 +80,12 @@ void put_char(char ch)
   	while (!(USART1->SR & USART_FLAG_TXE));
 }
 
+char comm_get(void)
+{
+        while(USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET) { ; }
+        return (char)USART_ReceiveData(USART1);
+}
+
 void xputc (char c)
 {
 	if (c == '\n') put_char('\r');
@@ -198,14 +204,13 @@ void put_dump (const BYTE *buff, DWORD ofs, int cnt)
 	xputc('\n');
 }
 
-#if 0
 void get_line (char *buff, int len)
 {
 	char c;
 	int idx = 0;
 
 	for (;;) {
-		c = xgetc();
+		c = comm_get();
 		if (c == '\r') break;
 		if ((c == '\b') && idx) {
 			idx--; xputc(c);
@@ -219,7 +224,7 @@ void get_line (char *buff, int len)
 	xputc('\n');
 }
 
-
+#if 0
 // function added by mthomas:
 int get_line_r (char *buff, int len, int* idx)
 {
@@ -227,9 +232,9 @@ int get_line_r (char *buff, int len, int* idx)
 	int retval = 0;
 	int myidx;
 
-	if ( xavail() ) {
+	if (xavail() ) {
 		myidx = *idx;
-		c = xgetc();
+		c = comm_get();
 		if (c == '\r') {
 			buff[myidx] = 0;
 			xputc('\n');
