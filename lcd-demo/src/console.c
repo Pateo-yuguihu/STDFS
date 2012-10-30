@@ -33,11 +33,11 @@ void lcd_printf(char *format, ...)
 			}
 			continue;
 		} else if (str[i] == '\r') {
+			cur_row = 0;
 			GUI_Text(cur_row, cur_line * FONT_HEIGHT,	/* clean line */
 				(u8 *)"                                        ",
 				0,
 				0xFFFF);
-			cur_row = 0;
 			continue;
 		}
 
