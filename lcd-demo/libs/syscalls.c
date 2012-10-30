@@ -53,7 +53,7 @@ caddr_t _sbrk (int incr)
 #endif
 	if (heap_end == 0) {
 		heap_end = (caddr_t)(&_eusrstack + 1);
-}
+	}
 	prev_heap_end = heap_end;
 #if 1
 	if (heap_end + incr > get_stack_top()) {
