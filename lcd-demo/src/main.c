@@ -216,12 +216,10 @@ int main(int argc, char *argv[])
 	stm32_core_init();
 	xprintf("SystemCoreClock:%d\n", SystemFrequency);
 
-	char str[20] = {0};
-	sprintf(str, "BLDM on uCos:%d", 1234);
 	FSMC_LCD_Init();
 	LCD_Init();
-	GUI_Text(0, 0, (u8 *)str, 0, 0xFFFF);
 
+	lcd_printf("BLDM on uCos:%d", 1234);
 	OSInit(); 
 	CPU_INT08U os_err = OSTaskCreate((void (*)(void *)) app_start,
 			(void *) 0,

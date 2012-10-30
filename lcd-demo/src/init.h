@@ -36,4 +36,5 @@ void xputc (char c);
 #define info(format, arg...)\
 	xprintf("[%d]" format, OSTime, ## arg)
 
+void lcd_printf(char *format, ...);
 #endif

@@ -2,7 +2,7 @@ include ../Makefile.common
 
 OBJS+=startup.o
 OBJS+=main.o
-OBJS+=fsmc_sram.o ili9320_api.o ili9320.o lcd_init.o xprintf.o
+OBJS+=fsmc_sram.o ili9320_api.o ili9320.o lcd_init.o xprintf.o console.o
 
 all: src
 
