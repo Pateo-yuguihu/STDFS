@@ -37,27 +37,51 @@ static OS_STK app_led_stk[APP_TASK_LED_STK_SIZE];
 
 static void app_monitor(void *p_arg)
 {
+	OS_TCB *ptcb;
+	OS_CPU_SR cpu_sr = 0;
+
 	while(1) {
 		info("app_monitor\n");
-		OSTimeDly(2000);
+		OSTimeDly(10000);
+
+		OS_ENTER_CRITICAL();
+		ptcb = OSTCBList;
+		while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO) {	 /* Go through all TCBs in TCB list */
+			lcd_printf("[%16s]prio:%2d Dly:%d\n",
+			ptcb->OSTCBTaskName, ptcb->OSTCBPrio, ptcb->OSTCBDly);
+		ptcb = ptcb->OSTCBNext;	/* Point at next TCB in TCB list */
+		}
+		OS_EXIT_CRITICAL();
 	}
+}
+
+void panic()
+{
+	int *p = NULL;
+	if (OSTime > 50000)
+		*p = 1234;
 }
 
 static void app_led(void *p_arg)
 {
+	int sp_used = 0;
 	info("app_led start...\n");
 	while(1) {
 		GPIO_SetBits(GPIOC, GPIO_Pin_6);
 		OSTimeDly(1000);
 		GPIO_ResetBits(GPIOC, GPIO_Pin_6);
-		OSTimeDly(1000);	
+		OSTimeDly(1000);
+		lcd_printf("[%ds]CPU:%d%% STACK:%dB\n",
+			OSTime/1000, OSCPUUsage,
+			(int)&app_led_stk[APP_TASK_LED_STK_SIZE - 1] - __get_PSP());
+		/* panic();*/
 	}
 }
 static void app_start(void *p_arg)
 {
 	CPU_INT08U os_err;
 	SysTick_Config(SystemFrequency/1000);
-	
+	OSStatInit();	/* stat task init */
 	os_err = OSTaskCreate((void (*)(void *)) app_monitor,
 			(void *) 0,
 			(OS_STK *) & app_monitor_stk[APP_TASK_MONITOR_STK_SIZE - 1], 
@@ -95,6 +119,7 @@ void find_symbol(int addr)
 		i++;
 	}
 }
+
 void Uart_Init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -191,6 +216,7 @@ void stm32_core_init()
 
 void dump_stack(int sp, int fp)
 {
+	OS_TCB *ptcb;
 	xprintf("======================================\n");
 	xprintf("FP: 0x%x Stack dump: 0x%x - 0x%x\n", fp, sp, &_eusrstack);
 	xprintf("R0   : 0x%8x\n", *(int *)(sp + 0));
@@ -202,6 +228,19 @@ void dump_stack(int sp, int fp)
 	xprintf("PC   : 0x%8x\n", *(int *)(sp + 24));
 	xprintf("xPSR : 0x%8x\n", *(int *)(sp + 28));
 	find_symbol(*(int *)(sp + 20));
+	if (OSRunning == OS_TRUE) {
+		xprintf("Current Task Name:%s, prio:%d, STK:0x%x\n",
+			OSTCBCur->OSTCBTaskName, OSTCBCur->OSTCBPrio, OSTCBCur->OSTCBStkPtr);
+
+		xprintf("List all task:\n");
+		ptcb = OSTCBList;
+		while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO) {	 /* Go through all TCBs in TCB list */
+			xprintf("Current Task Name:%s, prio:%d, STK:0x%x, status:0x%x, Dly:%d\n",
+			ptcb->OSTCBTaskName, ptcb->OSTCBPrio, ptcb->OSTCBStkPtr, ptcb->OSTCBStat,
+			ptcb->OSTCBDly);
+		ptcb = ptcb->OSTCBNext;	/* Point at next TCB in TCB list */
+		}
+	}
 	xprintf("======================================\n");
 	while(1);
 }
@@ -219,7 +258,7 @@ int main(int argc, char *argv[])
 	FSMC_LCD_Init();
 	LCD_Init();
 
-	lcd_printf("BLDM on uCos:%d", 1234);
+	lcd_printf("****BLDM %s %s****\n", __DATE__, __TIME__);
 	OSInit(); 
 	CPU_INT08U os_err = OSTaskCreate((void (*)(void *)) app_start,
 			(void *) 0,

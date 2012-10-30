@@ -14,9 +14,20 @@ static int cur_line = 0, cur_row = 0;
 #define MAX_LINE	15
 #define MAX_ROW 	40
 
+void clear_fullscreen()
+{
+	int i = 0;
+	for (i = 1; i < 15; i++) {
+		GUI_Text(0, i * FONT_HEIGHT,	/* clean line */
+			(u8 *)"                                        ",
+			0,
+			0xFFFF);
+	}
+}
+
 void lcd_printf(char *format, ...)
 {
-	char str[40];
+	char str[64];
 	int i;
 	va_list args;
 
@@ -28,8 +39,8 @@ void lcd_printf(char *format, ...)
 			cur_row = 0;
 			cur_line++;
 			if (cur_line == MAX_LINE) {
-				cur_line = 0;
-				ili9320_Clear(0xFFFF); /* clear fullscreen */
+				cur_line = 1;
+				clear_fullscreen();
 			}
 			continue;
 		} else if (str[i] == '\r') {

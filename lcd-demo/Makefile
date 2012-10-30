@@ -24,7 +24,7 @@ all: libs src ucos
 	$(OBJCOPY) -O ihex $(PROGRAM).elf $(PROGRAM).hex
 	$(OBJCOPY) -O binary $(PROGRAM).elf $(PROGRAM).bin
 	arm-none-eabi-nm -n $(PROGRAM).elf > $(PROGRAM).map
-	@arm-none-eabi-size --format=SysV  -x $(PROGRAM).elf
+	@arm-none-eabi-size --format=SysV  -d $(PROGRAM).elf
 	cp main.bin /media/sf_ubuntu/
 
 .PHONY:libs src ucos clean
