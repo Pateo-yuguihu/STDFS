@@ -16,9 +16,13 @@ libstm32.a:
 	cd $(STMLIB)/../ && \
 		$(CC) -mcpu=cortex-m3 -mthumb -x assembler-with-cpp -c \
 		context_gcc.S
+	cd $(STMLIB)/../ && \
+		$(CC) $(CFLAGS) \
+		syscalls.c
+
 	$(AR) cr $(LIBDIR)/$@ \
 		$(STMLIB)/SRC/*.o \
-		$(STMLIB)/../context_gcc.o
+		$(STMLIB)/../*.o
 	@echo "done."
 
 PHONY:libs clean
@@ -26,6 +30,6 @@ PHONY:libs clean
 clean:
 	rm -f $(STMLIB)/SRC/*.o
 	rm -f $(LIBS)
-	rm -f $(STMLIB)/../context_gcc.o
+	rm -f $(STMLIB)/../*.o
 
 

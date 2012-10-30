@@ -31,6 +31,7 @@ struct sys_init core_##func	\
 }
 
 void xprintf (const char* str, ...);
+void xputc (char c);
 
 #define info(format, arg...)\
 	xprintf("[%d]" format, OSTime, ## arg)

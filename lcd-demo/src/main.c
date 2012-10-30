@@ -13,6 +13,7 @@
 #include <cpu.h>
 #include <lib_def.h>
 #include "ili9320.h"
+#include <stdio.h>
 
 extern struct sys_init _module_start[], _core_start[], _core_end[];
 extern struct sys_init _module_end[];
@@ -215,9 +216,11 @@ int main(int argc, char *argv[])
 	stm32_core_init();
 	xprintf("SystemCoreClock:%d\n", SystemFrequency);
 
+	char str[20] = {0};
+	sprintf(str, "BLDM on uCos:%d", 1234);
 	FSMC_LCD_Init();
 	LCD_Init();
-	GUI_Text(0, 0, (u8 *)"***Breshless project on uCosII***", 0, 0xFFFF);
+	GUI_Text(0, 0, (u8 *)str, 0, 0xFFFF);
 
 	OSInit(); 
 	CPU_INT08U os_err = OSTaskCreate((void (*)(void *)) app_start,
