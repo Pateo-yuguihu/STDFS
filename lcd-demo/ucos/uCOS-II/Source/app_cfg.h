@@ -65,7 +65,7 @@
 #define  APP_TASK_MONITOR_STK_SIZE                       512
 #define  APP_TASK_LED_STK_SIZE                           512
 #define  APP_TASK_U1TX_STK_SIZE                          128
-#define  APP_TASK_CONSOLE_STK_SIZE                       256
+#define  APP_TASK_CONSOLE_STK_SIZE                       512
 
 /*
 *********************************************************************************************************

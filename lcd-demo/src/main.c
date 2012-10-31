@@ -44,7 +44,7 @@ static void app_monitor(void *p_arg)
 	OS_CPU_SR cpu_sr = 0;
 
 	while(1) {
-		info("app_monitor\n");
+		/* info("app_monitor\n"); */
 		OSTimeDly(8000);
 
 		OS_ENTER_CRITICAL();
@@ -103,6 +103,8 @@ static void app_console(void *p_arg)
 	while(1) {
 		get_line(command, strlen(command));
 		lcd_printf("Command:%s\n", command);
+		parse_command(command);		/* console cmd */
+		xprintf(CONSOLE_PROMPT);
 	}
 }
 

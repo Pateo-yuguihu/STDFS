@@ -21,8 +21,11 @@ SECTIONS {
 		KEEP(*(.core))		/* core init */
 	_core_end = .;
 	_module_start = .; 
-		KEEP(*(.module))
+		KEEP(*(.module))	/* module list */
 	_module_end = .;
+	__commandlist_start = .;
+		KEEP(*(.commandlist))	/* command list */
+	__commandlist_end = .;
  } >FLASH
  .rodata : ALIGN (4) {
 	 *(.rodata .rodata.*)
