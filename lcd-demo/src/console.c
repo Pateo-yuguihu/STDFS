@@ -7,6 +7,10 @@
 #include <string.h>
 #include "init.h"
 #include <stdarg.h>
+#include "stm32f10x.h"
+#include "stm32f10x_rcc.h"
+#include "stm32f10x_gpio.h"
+#include "stm32f10x_usart.h"
 
 static int cur_line = 0, cur_row = 0;
 #define FONT_WIDTH 	8
@@ -59,4 +63,25 @@ void lcd_printf(char *format, ...)
 			xprintf("Warning:more than 40 chars in a line!\n");
 	}
 	va_end(args);
+}
+
+extern OS_EVENT *uart_receive_sem;
+void USART1_IRQHandler(void)
+{
+	char chr;
+	if(USART_GetFlagStatus(USART1,USART_IT_RXNE)==SET)
+	{
+		OSSemPost(uart_receive_sem);
+		//chr = USART_ReceiveData(USART1);
+		/* USART_SendData(USART1,i);	// TC: send complete flag
+		 while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)
+		{
+		} */
+	}
+
+	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+	{
+		/* Clear the USART1 Receive interrupt */
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+	}
 }

@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include "stm32f10x_usart.h"
+#include <init.h>
 
 /* These types must be 16-bit, 32-bit or larger integer */
 typedef int             INT;
@@ -80,10 +81,15 @@ void put_char(char ch)
   	while (!(USART1->SR & USART_FLAG_TXE));
 }
 
+extern OS_EVENT *uart_receive_sem;
 char comm_get(void)
 {
-        while(USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET) { ; }
-        return (char)USART_ReceiveData(USART1);
+	INT8U err;
+	OSSemPend(uart_receive_sem, 0, &err);
+	if (err == OS_ERR_NONE)
+		return (char)USART_ReceiveData(USART1);
+	else
+		xprintf("uart_sem error:%d\n", err);
 }
 
 void xputc (char c)

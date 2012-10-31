@@ -14,6 +14,7 @@
 #include <lib_def.h>
 #include "ili9320.h"
 #include <stdio.h>
+#include <misc.h>
 
 extern struct sys_init _module_start[], _core_start[], _core_end[];
 extern struct sys_init _module_end[];
@@ -34,7 +35,9 @@ void lcd_rst(void){
 static OS_STK app_start_stk[APP_TASK_START_STK_SIZE];
 static OS_STK app_monitor_stk[APP_TASK_MONITOR_STK_SIZE];
 static OS_STK app_led_stk[APP_TASK_LED_STK_SIZE];
+static OS_STK app_console_stk[APP_TASK_CONSOLE_STK_SIZE];
 
+OS_EVENT *uart_receive_sem;
 static void app_monitor(void *p_arg)
 {
 	OS_TCB *ptcb;
@@ -48,7 +51,8 @@ static void app_monitor(void *p_arg)
 		ptcb = OSTCBList;
 		while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO) {	 /* Go through all TCBs in TCB list */
 			lcd_printf("[%13s]prio:%2d StkUsed:%d%%\n",
-			ptcb->OSTCBTaskName, ptcb->OSTCBPrio, ptcb->OSTCBStkUsed  *100 / (ptcb->OSTCBStkSize * sizeof(OS_STK)));
+			ptcb->OSTCBTaskName, ptcb->OSTCBPrio,
+			ptcb->OSTCBStkUsed  *100 / (ptcb->OSTCBStkSize * sizeof(OS_STK)));
 		ptcb = ptcb->OSTCBNext;	/* Point at next TCB in TCB list */
 		}
 		OS_EXIT_CRITICAL();
@@ -64,7 +68,6 @@ void panic()
 
 static void app_led(void *p_arg)
 {
-	int sp_used = 0;
 	info("app_led start...\n");
 	while(1) {
 		GPIO_SetBits(GPIOC, GPIO_Pin_6);
@@ -75,6 +78,34 @@ static void app_led(void *p_arg)
 		/* panic();*/
 	}
 }
+
+void NVIC_Configuration(void)
+{
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	/* NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0); */
+
+	/* Configure the NVIC Preemption Priority Bits */
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+	/* Enable the USART1 Interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+}
+
+static void app_console(void *p_arg)
+{
+	char command[20];
+	info("console-task init\n");
+	info("Uart1 @9600bps\n");
+	NVIC_Configuration();
+	while(1) {
+		get_line(command, strlen(command));
+		lcd_printf("Command:%s\n", command);
+	}
+}
+
 static void app_start(void *p_arg)
 {
 	CPU_INT08U os_err;
@@ -90,7 +121,7 @@ static void app_start(void *p_arg)
 			(void *)0,
 			OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR);
 
-	OSTaskNameSet(APP_TASK_MONITOR_PRIO, (CPU_INT08U *)"app_monitor", &os_err);
+	OSTaskNameSet(APP_TASK_MONITOR_PRIO, (CPU_INT08U *)"system monitor", &os_err);
 
 	os_err = OSTaskCreateExt((void (*)(void *)) app_led,
 			(void *) 0,
@@ -102,7 +133,20 @@ static void app_start(void *p_arg)
 			(void *)0,
 			OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR);
 
-	OSTaskNameSet(APP_TASK_LED_PRIO, (CPU_INT08U *)"app_led", &os_err);
+	OSTaskNameSet(APP_TASK_LED_PRIO, (CPU_INT08U *)"led flush", &os_err);
+
+	uart_receive_sem = OSSemCreate(0);
+	os_err = OSTaskCreateExt((void (*)(void *)) app_console,
+			(void *) 0,
+			(OS_STK *) & app_console_stk[APP_TASK_CONSOLE_STK_SIZE - 1],
+			(INT8U) APP_TASK_CONSOLE_PRIO,
+			0,
+			(OS_STK *) & app_console_stk[0],
+			APP_TASK_CONSOLE_STK_SIZE,
+			(void *)0,
+			OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR);
+
+	OSTaskNameSet(APP_TASK_CONSOLE_PRIO, (CPU_INT08U *)"console", &os_err);
 
 	while(1) {
 		info("app_start\n");
@@ -153,7 +197,7 @@ void Uart_Init(void)
 
 	/* Configure USART1 */
 	USART_Init(USART1, &USART_InitStructure);
-
+	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
 	/* Enable the USART1 */
 	USART_Cmd(USART1, ENABLE);
 }
@@ -286,7 +330,7 @@ int main(int argc, char *argv[])
 			(INT8U) APP_TASK_START_PRIO);
 	*/
 	if (os_err == OS_ERR_NONE)
-		OSTaskNameSet(APP_TASK_START_PRIO, (CPU_INT08U *) "app_start", &os_err);
+		OSTaskNameSet(APP_TASK_START_PRIO, (CPU_INT08U *) "init task", &os_err);
 
 	OSStart();
 	while(1)
