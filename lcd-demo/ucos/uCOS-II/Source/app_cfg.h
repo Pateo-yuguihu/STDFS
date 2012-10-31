@@ -48,7 +48,7 @@
 */
 
 #define  APP_TASK_START_PRIO                              15
-#define  APP_TASK_MONITOR_PRIO                            12
+#define  APP_TASK_MONITOR_PRIO                            10
 #define  APP_TASK_LED_PRIO                            	  11
 #define  APP_TASK_U3RX_PRIO                                4
 #define  OS_TASK_TMR_PRIO                                 60

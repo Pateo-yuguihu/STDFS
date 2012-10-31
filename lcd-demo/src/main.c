@@ -42,13 +42,13 @@ static void app_monitor(void *p_arg)
 
 	while(1) {
 		info("app_monitor\n");
-		OSTimeDly(10000);
+		OSTimeDly(8000);
 
 		OS_ENTER_CRITICAL();
 		ptcb = OSTCBList;
 		while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO) {	 /* Go through all TCBs in TCB list */
-			lcd_printf("[%16s]prio:%2d Dly:%d\n",
-			ptcb->OSTCBTaskName, ptcb->OSTCBPrio, ptcb->OSTCBDly);
+			lcd_printf("[%13s]prio:%2d StkUsed:%d%%\n",
+			ptcb->OSTCBTaskName, ptcb->OSTCBPrio, ptcb->OSTCBStkUsed  *100 / (ptcb->OSTCBStkSize * sizeof(OS_STK)));
 		ptcb = ptcb->OSTCBNext;	/* Point at next TCB in TCB list */
 		}
 		OS_EXIT_CRITICAL();
@@ -71,9 +71,7 @@ static void app_led(void *p_arg)
 		OSTimeDly(1000);
 		GPIO_ResetBits(GPIOC, GPIO_Pin_6);
 		OSTimeDly(1000);
-		lcd_printf("[%ds]CPU:%d%% STACK:%dB\n",
-			OSTime/1000, OSCPUUsage,
-			(int)&app_led_stk[APP_TASK_LED_STK_SIZE - 1] - __get_PSP());
+		lcd_printf("[%ds]CPU usage:%d%%\n", OSTime / 1000, OSCPUUsage);
 		/* panic();*/
 	}
 }
@@ -82,16 +80,28 @@ static void app_start(void *p_arg)
 	CPU_INT08U os_err;
 	SysTick_Config(SystemFrequency/1000);
 	OSStatInit();	/* stat task init */
-	os_err = OSTaskCreate((void (*)(void *)) app_monitor,
+	os_err = OSTaskCreateExt((void (*)(void *)) app_monitor,
 			(void *) 0,
 			(OS_STK *) & app_monitor_stk[APP_TASK_MONITOR_STK_SIZE - 1], 
-			(INT8U) APP_TASK_MONITOR_PRIO);
+			(INT8U) APP_TASK_MONITOR_PRIO, /* high priority */
+			0,
+			(OS_STK *) & app_monitor_stk[0],
+			APP_TASK_MONITOR_STK_SIZE,
+			(void *)0,
+			OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR);
+
 	OSTaskNameSet(APP_TASK_MONITOR_PRIO, (CPU_INT08U *)"app_monitor", &os_err);
 
-	os_err = OSTaskCreate((void (*)(void *)) app_led,
+	os_err = OSTaskCreateExt((void (*)(void *)) app_led,
 			(void *) 0,
 			(OS_STK *) & app_led_stk[APP_TASK_LED_STK_SIZE - 1], 
-			(INT8U) APP_TASK_LED_PRIO);
+			(INT8U) APP_TASK_LED_PRIO,
+			0,
+			(OS_STK *) & app_led_stk[0],
+			APP_TASK_LED_STK_SIZE,
+			(void *)0,
+			OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR);
+
 	OSTaskNameSet(APP_TASK_LED_PRIO, (CPU_INT08U *)"app_led", &os_err);
 
 	while(1) {
@@ -259,12 +269,22 @@ int main(int argc, char *argv[])
 	LCD_Init();
 
 	lcd_printf("****BLDM %s %s****\n", __DATE__, __TIME__);
-	OSInit(); 
+	OSInit();
+	CPU_INT08U os_err = OSTaskCreateExt((void (*)(void *)) app_start,
+						(void *)0,
+						(OS_STK *) & app_start_stk[APP_TASK_START_STK_SIZE - 1],
+						(INT8U) APP_TASK_START_PRIO,
+						0,
+						(OS_STK *) & app_start_stk[0],
+						APP_TASK_START_STK_SIZE,
+						(void *)0,
+						OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR);
+	/*
 	CPU_INT08U os_err = OSTaskCreate((void (*)(void *)) app_start,
 			(void *) 0,
 			(OS_STK *) & app_start_stk[APP_TASK_START_STK_SIZE - 1], 
 			(INT8U) APP_TASK_START_PRIO);
-
+	*/
 	if (os_err == OS_ERR_NONE)
 		OSTaskNameSet(APP_TASK_START_PRIO, (CPU_INT08U *) "app_start", &os_err);
 
