@@ -68,7 +68,10 @@ void lcd_printf(char *format, ...)
 extern OS_EVENT *uart_receive_sem;
 void USART1_IRQHandler(void)
 {
-	char chr;
+	//OSIntEnter();
+	
+	OS_CPU_SR cpu_sr = 0;
+	OS_ENTER_CRITICAL();
 	if(USART_GetFlagStatus(USART1,USART_IT_RXNE)==SET)
 	{
 		OSSemPost(uart_receive_sem);
@@ -84,6 +87,8 @@ void USART1_IRQHandler(void)
 		/* Clear the USART1 Receive interrupt */
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 	}
+	//OSIntExit();
+	OS_EXIT_CRITICAL();
 }
 
 extern commandlist_t __commandlist_start[];
@@ -144,7 +149,7 @@ static int get_num_command_matches(char *cmdline)
 
 	len = strlen(cmdline);
 
-	for(cmd = __commandlist_start; cmd <  __commandlist_start; cmd++) {
+	for(cmd = __commandlist_start; cmd <  __commandlist_end; cmd++) {
 		if(cmd->magic != COMMAND_MAGIC) {
 			xprintf("command magic failed at 0x%08x\n",
 				 (unsigned int)cmd);
@@ -172,7 +177,6 @@ int parse_command(char *cmdline)
 		return 0;
 
 	num_commands = get_num_command_matches(argv[0]);
-
 	/* error */
 	if(num_commands < 0)
 		return num_commands;
@@ -195,7 +199,7 @@ int parse_command(char *cmdline)
 
 			return -1;
 		}
-
+		
 		if(strncmp(cmd->name, argv[0], len) == 0) {
 			/* call function */
 			return cmd->callback(argc, argv);

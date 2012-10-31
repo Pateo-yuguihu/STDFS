@@ -5,7 +5,7 @@
 include ../Makefile.common
 
 SRC_OBJ = startup.o main.o fsmc_sram.o ili9320_api.o ili9320.o \
-	lcd_init.o xprintf.o console.o toolbox.o
+	lcd_init.o xprintf.o console.o
 
 src: $(SRC_OBJ)
 $(SRC_OBJ): %.o: %.c

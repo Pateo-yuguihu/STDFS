@@ -52,7 +52,7 @@
 #define  APP_TASK_LED_PRIO                            	  11
 #define  APP_TASK_U3RX_PRIO                                4
 #define  OS_TASK_TMR_PRIO                                 60
-#define  APP_TASK_CONSOLE_PRIO                             9
+#define  APP_TASK_CONSOLE_PRIO                            12
 
 /*
 *********************************************************************************************************

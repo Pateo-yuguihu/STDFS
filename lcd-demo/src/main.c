@@ -47,7 +47,7 @@ static void app_monitor(void *p_arg)
 		/* info("app_monitor\n"); */
 		OSTimeDly(8000);
 
-		OS_ENTER_CRITICAL();
+		//OS_ENTER_CRITICAL();
 		ptcb = OSTCBList;
 		while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO) {	 /* Go through all TCBs in TCB list */
 			lcd_printf("[%13s]prio:%2d StkUsed:%d%%\n",
@@ -55,7 +55,7 @@ static void app_monitor(void *p_arg)
 			ptcb->OSTCBStkUsed  *100 / (ptcb->OSTCBStkSize * sizeof(OS_STK)));
 		ptcb = ptcb->OSTCBNext;	/* Point at next TCB in TCB list */
 		}
-		OS_EXIT_CRITICAL();
+		//OS_EXIT_CRITICAL();
 	}
 }
 
@@ -100,8 +100,9 @@ static void app_console(void *p_arg)
 	info("console-task init\n");
 	info("Uart1 @9600bps\n");
 	NVIC_Configuration();
+	xprintf(CONSOLE_PROMPT);
 	while(1) {
-		get_line(command, strlen(command));
+		get_line(command, 20);
 		lcd_printf("Command:%s\n", command);
 		parse_command(command);		/* console cmd */
 		xprintf(CONSOLE_PROMPT);
@@ -151,7 +152,7 @@ static void app_start(void *p_arg)
 	OSTaskNameSet(APP_TASK_CONSOLE_PRIO, (CPU_INT08U *)"console", &os_err);
 
 	while(1) {
-		info("app_start\n");
+		/* info("app_start\n"); */
 		OSTimeDly(1000);
 	}
 }
@@ -299,6 +300,30 @@ void dump_stack(int sp, int fp)
 	}
 	xprintf("======================================\n");
 	while(1);
+}
+
+void UsageFault_Handler()
+{
+	xprintf("UsageFault_Handler\n");
+	dump_stack(__get_PSP(), 0);
+}
+
+void BusFault_Handler()
+{
+	xprintf("BusFault_Handler\n");
+	dump_stack(__get_PSP(), 0);
+}
+
+void MemManage_Handler()
+{
+	xprintf("MemManage_Handler\n");
+	dump_stack(__get_PSP(), 0);
+}
+
+void NMI_Handler()
+{
+	xprintf("NMI_Handler\n");
+	dump_stack(__get_PSP(), 0);
 }
 
 int main(int argc, char *argv[])

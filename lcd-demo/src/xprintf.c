@@ -217,13 +217,16 @@ void get_line (char *buff, int len)
 
 	for (;;) {
 		c = comm_get();
-		if (c == '\r') break;
+		if ((c == '\r') || (c== '\n')) 
+			break;
 		if ((c == '\b') && idx) {
 			idx--; xputc(c);
 			xputc(' '); xputc(c); // added by mthomas for Eclipse Terminal plug-in
 		}
 		if (((BYTE)c >= ' ') && (idx < len - 1)) {
-				buff[idx++] = c; xputc(c);
+			buff[idx++] = c; xputc(c);
+			if (idx == (len - 1))
+				break;
 		}
 	}
 	buff[idx] = 0;
