@@ -7,9 +7,7 @@ LDLIBS+=-lstm32 -luCOS-II
 all: libs src ucos
 	@echo "1. Make ELF without function map table"
 	$(CC) -o $(PROGRAM)_tmp.elf $(LDFLAGS) \
-		-W1,--whole-archive \
-		src/app.a \
-		-W1,--no-whole-archive \
+		src/*.o \
 		$(LDLIBS)
 	arm-none-eabi-nm -n $(PROGRAM)_tmp.elf > $(PROGRAM).map
 	rm -f map.c map.o
@@ -17,9 +15,7 @@ all: libs src ucos
 	$(CC) $(CFLAGS) -c map.c
 	@echo "2. Make ELF again"
 	$(CC) -o $(PROGRAM).elf $(LDFLAGS) \
-		-W1,--whole-archive \
-		src/app.a \
-		-W1,--no-whole-archive map.o\
+		src/*.o map.o\
 		$(LDLIBS)
 	$(OBJCOPY) -O ihex $(PROGRAM).elf $(PROGRAM).hex
 	$(OBJCOPY) -O binary $(PROGRAM).elf $(PROGRAM).bin

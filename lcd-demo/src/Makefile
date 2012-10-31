@@ -1,17 +1,17 @@
+##############################
+# Author: Hu Yugui <yugui.hu@hotmail.com>
+# Project for Breshless DC motor
+##############################
 include ../Makefile.common
 
-OBJS+=startup.o
-OBJS+=main.o
-OBJS+=fsmc_sram.o ili9320_api.o ili9320.o lcd_init.o xprintf.o console.o
+SRC_OBJ = startup.o main.o fsmc_sram.o ili9320_api.o ili9320.o \
+	lcd_init.o xprintf.o console.o toolbox.o
 
-all: src
+src: $(SRC_OBJ)
+$(SRC_OBJ): %.o: %.c
+	$(CC) -c $(CFLAGS) $<
 
-src: app.a
-
-app.a: $(OBJS)
-	$(AR) cr app.a $(OBJS)
-
-.PHONY:src clean
+.PHONY: clean
 
 clean:
-	rm -f app.a $(OBJS)
+	rm -f $(SRC_OBJ)

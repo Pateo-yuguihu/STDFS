@@ -29,11 +29,9 @@ libuCOS-II.a:
 	@echo "               $@编译成功                    "
 	@echo "============================================="
 
-PHONY:libs clean
+.PHONY:clean
 
 clean:
 	rm -f $(UCOSLIB)/libuCOS-II.a
 	rm -f $(UCOSLIB)/uCOS-II/Ports/ARM-Cortex-M3/Generic/GCC/*.o
 	rm -f $(UCOSLIB)/uCOS-II/Source/*.o
-
-
