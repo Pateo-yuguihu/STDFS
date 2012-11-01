@@ -655,8 +655,9 @@ void OSIntExit(void)
     if (OSIntNesting == 0) {    /* Reschedule only if all ISRs complete ... */
       if (OSLockNesting == 0) { /* ... and not locked.                      */
         OS_SchedNew();
+	OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
         if (OSPrioHighRdy != OSPrioCur) {       /* No Ctx Sw if current task is highest rdy */
-          OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
+         /*  OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy]; */
 #if OS_TASK_PROFILE_EN > 0
           OSTCBHighRdy->OSTCBCtxSwCtr++;        /* Inc. # of context switches to this task  */
 #endif
@@ -1575,8 +1576,9 @@ void OS_Sched(void)
   if (OSIntNesting == 0) {      /* Schedule only if all ISRs done and ...       */
     if (OSLockNesting == 0) {   /* ... scheduler is not locked                  */
       OS_SchedNew();
+      OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
       if (OSPrioHighRdy != OSPrioCur) { /* No Ctx Sw if current task is highest rdy     */
-        OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
+       /*  OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy]; */
 #if OS_TASK_PROFILE_EN > 0
         OSTCBHighRdy->OSTCBCtxSwCtr++;  /* Inc. # of context switches to this task      */
 #endif
