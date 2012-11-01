@@ -4,6 +4,7 @@ LIBDIR=$(TOP)/libs
 #Adjust the following line to the library in use
 STMLIB=$(LIBDIR)/FWlib
 UCOSLIB=$(TOP)/ucos
+GUILIB=$(TOP)/uCGUI
 TC=arm-none-eabi
 CC=$(TC)-gcc
 LD=$(TC)-gcc
@@ -18,7 +19,9 @@ INCLUDE+=-I$(UCOSLIB)/uCOS-II/Source
 INCLUDE+=-I$(UCOSLIB)/uC-CPU
 INCLUDE+=-I$(UCOSLIB)/uC-CPU/ARM-Cortex-M3/GCC
 INCLUDE+=-I$(TOP)/src
-
+INCLUDE+=-I$(TOP)/uCGUI/Core
+INCLUDE+=-I$(TOP)/uCGUI/WM
+INCLUDE+=-I$(TOP)/uCGUI/Widget
 #Compiler optimize settings:
 #-O0 no optimize, reduce compilation time and make debugging produce the expected results(default).
 #-O1 optimize, reduce code size and execution time without much increase of comilation time.

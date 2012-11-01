@@ -16,7 +16,7 @@ extern void lcd_wr_zf(unsigned int a, unsigned int b, unsigned int a1,unsigned i
 extern void lcd_wr_pixel(unsigned int a, unsigned int b, unsigned int e) ;
 extern unsigned char *num_pub(unsigned int a);
 extern unsigned int LCD_RD_data(void);
-void LCD_Init(void);
+void LCD_Initialization(void);
 
 #define nCS     GPIO_Pin_0
 #define RS      GPIO_Pin_1
@@ -68,7 +68,7 @@ u16 CheckController(void)
 
 void ili9320_Initializtion()
 { 
-	LCD_Init();
+	LCD_Initialization();
 }
 
 void ili9320_SetCursor(u16 x,u16 y)

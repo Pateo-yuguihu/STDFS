@@ -152,7 +152,8 @@ static void app_start(void *p_arg)
 	OSTaskNameSet(APP_TASK_CONSOLE_PRIO, (CPU_INT08U *)"console", &os_err);
 
 	while(1) {
-		/* info("app_start\n"); */
+		/* info("app_start\n"); */\
+		MainTask();
 		OSTimeDly(1000);
 	}
 }
@@ -337,7 +338,7 @@ int main(int argc, char *argv[])
 	xprintf("SystemCoreClock:%d\n", SystemFrequency);
 
 	FSMC_LCD_Init();
-	LCD_Init();
+	LCD_Initialization();
 
 	lcd_printf("****BLDM %s %s****\n", __DATE__, __TIME__);
 	OSInit();

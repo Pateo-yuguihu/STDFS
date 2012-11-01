@@ -43,7 +43,7 @@ void LCD_WR_Data_8(unsigned int val)
 	*(__IO uint16_t *) (Bank1_LCD_D)= val;
 }
 
-void LCD_Init(void)
+void LCD_Initialization(void)
 {
 	lcd_rst();	 
 
