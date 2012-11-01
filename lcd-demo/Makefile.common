@@ -22,6 +22,7 @@ INCLUDE+=-I$(TOP)/src
 INCLUDE+=-I$(TOP)/uCGUI/Core
 INCLUDE+=-I$(TOP)/uCGUI/WM
 INCLUDE+=-I$(TOP)/uCGUI/Widget
+INCLUDE+=-I$(TOP)/uCGUI/Config
 #Compiler optimize settings:
 #-O0 no optimize, reduce compilation time and make debugging produce the expected results(default).
 #-O1 optimize, reduce code size and execution time without much increase of comilation time.
