@@ -34,5 +34,5 @@ libgui.a:$(GUI_OBJS)
 
 .PHONY:clean
 clean:
-	rm -f $(GUILIB)/libgui.a
+	#rm -f $(GUILIB)/libgui.a
 	find -type f -name '*.o' -print0 |xargs -0 rm -f

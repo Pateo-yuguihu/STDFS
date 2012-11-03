@@ -82,12 +82,13 @@ void put_char(char ch)
 }
 
 extern OS_EVENT *uart_receive_sem;
+extern char uart_chr;
 char comm_get(void)
 {
 	INT8U err;
 	OSSemPend(uart_receive_sem, 0, &err);
 	if (err == OS_ERR_NONE)
-		return (char)USART_ReceiveData(USART1);
+		return uart_chr;//(char)USART_ReceiveData(USART1);
 	else
 		xprintf("uart_sem error:%d\n", err);
 }

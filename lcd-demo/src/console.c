@@ -66,29 +66,19 @@ void lcd_printf(char *format, ...)
 }
 
 extern OS_EVENT *uart_receive_sem;
+char uart_chr = 0;
 void USART1_IRQHandler(void)
 {
-	//OSIntEnter();
-	
-	OS_CPU_SR cpu_sr = 0;
-	OS_ENTER_CRITICAL();
+	OSIntEnter();
+
 	if(USART_GetFlagStatus(USART1,USART_IT_RXNE)==SET)
 	{
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+		uart_chr = USART_ReceiveData(USART1);
 		OSSemPost(uart_receive_sem);
-		//chr = USART_ReceiveData(USART1);
-		/* USART_SendData(USART1,i);	// TC: send complete flag
-		 while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)
-		{
-		} */
 	}
 
-	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
-	{
-		/* Clear the USART1 Receive interrupt */
-		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-	}
-	//OSIntExit();
-	OS_EXIT_CRITICAL();
+	OSIntExit();
 }
 
 extern commandlist_t __commandlist_start[];

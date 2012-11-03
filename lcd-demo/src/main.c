@@ -47,7 +47,7 @@ static void app_monitor(void *p_arg)
 		/* info("app_monitor\n"); */
 		OSTimeDly(8000);
 
-		//OS_ENTER_CRITICAL();
+		OS_ENTER_CRITICAL();
 		ptcb = OSTCBList;
 		while (ptcb->OSTCBPrio != OS_TASK_IDLE_PRIO) {	 /* Go through all TCBs in TCB list */
 			lcd_printf("[%13s]prio:%2d StkUsed:%d%%\n",
@@ -55,7 +55,7 @@ static void app_monitor(void *p_arg)
 			ptcb->OSTCBStkUsed  *100 / (ptcb->OSTCBStkSize * sizeof(OS_STK)));
 		ptcb = ptcb->OSTCBNext;	/* Point at next TCB in TCB list */
 		}
-		//OS_EXIT_CRITICAL();
+		OS_EXIT_CRITICAL();
 	}
 }
 
@@ -153,7 +153,7 @@ static void app_start(void *p_arg)
 
 	while(1) {
 		/* info("app_start\n"); */\
-		MainTask();
+		/* MainTask(); */
 		OSTimeDly(1000);
 	}
 }

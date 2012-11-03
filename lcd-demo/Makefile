@@ -5,7 +5,7 @@ LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections \
 LDLIBS += -lc
 LDLIBS += -lstm32  -lgui -luCOS-II -lm
 
-all: libs src ucos uCGUI
+all: libs src ucos
 	@echo "1. Make ELF without function map table"
 	$(CC) -o $(PROGRAM)_tmp.elf $(LDFLAGS) \
 		src/*.o \
